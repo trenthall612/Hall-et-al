@@ -1,0 +1,389 @@
+---
+title: "Hyunjin GO analysis"
+author: "Trent"
+date: "5/13/2021"
+output: html_document
+---
+
+Use Hyunjin's code to set up the pathwayAnalysis_CP function:
+```{r}
+# ******************************************************************************************
+# Pathway Analysis with clusterProfiler package
+# Input: geneList     = a vector of gene Entrez IDs for pathway analysis [numeric or character]
+#        org          = organism that will be used in the analysis ["human" or "mouse"]
+#                       should be either "human" or "mouse"
+#        database     = pathway analysis database (KEGG or GO) ["KEGG" or "GO"]
+#        title        = title of the pathway figure [character]
+#        pv_threshold = pathway analysis p-value threshold (not DE analysis threshold) [numeric]
+#        displayNum   = the number of pathways that will be displayed [numeric]
+#                       (If there are many significant pathways show the few top pathways)
+#        imgPrint     = print a plot of pathway analysis [TRUE/FALSE]
+#        dir          = file directory path of the output pathway figure [character]
+#
+# Output: Pathway analysis results in figure - using KEGG and GO pathways
+#         The x-axis represents the number of DE genes in the pathway
+#         The y-axis represents pathway names
+#         The color of a bar indicates adjusted p-value from the pathway analysis
+#         For Pathview Result, all colored genes are found DE genes in the pathway,
+#         and the color indicates log2(fold change) of the DE gene from DE analysis
+# ******************************************************************************************
+pathwayAnalysis_CP <- function(geneList,
+                               org,
+                               database,
+                               title="Pathway_Results",
+                               pv_threshold=0.05,
+                               displayNum=Inf,
+                               imgPrint=TRUE,
+                               dir="./") {
+ 
+  ### load library
+  if(!require(clusterProfiler, quietly = TRUE)) {
+    if (!requireNamespace("BiocManager", quietly = TRUE))
+      install.packages("BiocManager")
+    BiocManager::install("clusterProfiler")
+    require(clusterProfiler, quietly = TRUE)
+  }
+  if(!require(ggplot2)) {
+    install.packages("ggplot2")
+    library(ggplot2)
+  }
+ 
+ 
+  ### collect gene list (Entrez IDs)
+  geneList <- geneList[which(!is.na(geneList))]
+ 
+  if(!is.null(geneList)) {
+    ### make an empty list
+    p <- list()
+   
+    if(database == "KEGG") {
+      ### KEGG Pathway
+      kegg_enrich <- enrichKEGG(gene = geneList, organism = org, pvalueCutoff = pv_threshold)
+     
+      if(is.null(kegg_enrich)) {
+        writeLines("KEGG Result does not exist")
+        return(NULL)
+      } else {
+        kegg_enrich@result <- kegg_enrich@result[which(kegg_enrich@result$p.adjust < pv_threshold),]
+       
+        if(imgPrint == TRUE) {
+          if((displayNum == Inf) || (nrow(kegg_enrich@result) <= displayNum)) {
+            result <- kegg_enrich@result
+            description <- kegg_enrich@result$Description
+          } else {
+            result <- kegg_enrich@result[1:displayNum,]
+            description <- kegg_enrich@result$Description[1:displayNum]
+          }
+         
+          if(nrow(kegg_enrich) > 0) {
+            p[[1]] <- ggplot(result, aes(x=Description, y=Count)) + labs(x="", y="Gene Counts") +
+              theme_classic(base_size = 50) + geom_bar(aes(fill = p.adjust), stat="identity") + coord_flip() +
+              scale_x_discrete(limits = rev(description)) +
+              guides(fill = guide_colorbar(ticks=FALSE, title="P.Val", barheight=10)) +
+              ggtitle(paste0("KEGG ", title)) +
+              theme(axis.text = element_text(size = 50))
+           
+            png(paste0(dir, "kegg_", title, "_CB.png"), width = 2200, height = 1000)
+            print(p[[1]])
+            dev.off()
+          } else {
+            writeLines("KEGG Result does not exist")
+          }
+        }
+       
+        return(kegg_enrich@result)
+      }
+    } else if(database == "GO") {
+      ### GO Pathway
+      if(org == "human") {
+        go_enrich <- enrichGO(gene = geneList, OrgDb = 'org.Hs.eg.db', readable = T, ont = "BP", pvalueCutoff = pv_threshold)
+      } else if(org == "mouse") {
+        go_enrich <- enrichGO(gene = geneList, OrgDb = 'org.Mm.eg.db', readable = T, ont = "BP", pvalueCutoff = pv_threshold)
+      } else {
+        go_enrich <- NULL
+        writeLines(paste("Unknown org variable:", org))
+      }
+     
+      if(is.null(go_enrich)) {
+        writeLines("GO Result does not exist")
+        return(NULL)
+      } else {
+        go_enrich@result <- go_enrich@result[which(go_enrich@result$p.adjust < pv_threshold),]
+       
+        if(imgPrint == TRUE) {
+          if((displayNum == Inf) || (nrow(go_enrich@result) <= displayNum)) {
+            result <- go_enrich@result
+            description <- go_enrich@result$Description
+          } else {
+            result <- go_enrich@result[1:displayNum,]
+            description <- go_enrich@result$Description[1:displayNum]
+          }
+         
+          if(nrow(go_enrich) > 0) {
+            p[[2]] <- ggplot(result, aes(x=Description, y=Count)) + labs(x="", y="Gene Counts") +
+              theme_classic(base_size = 50) + geom_bar(aes(fill = p.adjust), stat="identity") + coord_flip() +
+              scale_x_discrete(limits = rev(description)) +
+              guides(fill = guide_colorbar(ticks=FALSE, title="P.Val", barheight=10)) +
+              ggtitle(paste0("GO ", title)) +
+              theme(axis.text = element_text(size = 50))
+           
+            png(paste0(dir, "go_", title, "_CB.png"), width = 2200, height = 1000)
+            print(p[[2]])
+            dev.off()
+          } else {
+            writeLines("GO Result does not exist")
+          }
+        }
+       
+        return(go_enrich@result)
+      }
+    } else {
+      stop("database prameter should be \"GO\" or \"KEGG\"")
+    }
+  } else {
+    writeLines("geneList = NULL")
+  }
+}
+
+if(!require(org.Mm.eg.db, quietly = TRUE)) {
+  if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+  BiocManager::install("org.Mm.eg.db")
+  require(org.Mm.eg.db, quietly = TRUE)
+}
+```
+Take all of the gene lists required and turn them into vectors that can be used (the gene lists I have are gene symbols, so need them to be converted to Entrez Gene IDs):
+```{r}
+###Load all data333
+library(readxl)
+GO_data <- read_excel("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/GO_genes.xlsx")
+
+###Convert excel data to vectors###
+
+L0<-GO_data$L0
+L2<-GO_data$L2
+L3<-GO_data$L3
+L5<-GO_data$L5
+L6<-GO_data$L6
+L7<-GO_data$L7
+M0<-GO_data$M0
+M2<-GO_data$M2
+M3<-GO_data$M3
+BML16<-GO_data$BML16
+FLL16<-GO_data$FLL16
+BMLP0<-GO_data$BMLP0
+FLLP0<-GO_data$FLLP0
+BMT16<-GO_data$BMT16
+BMM16<-GO_data$BMM16
+FLEM16<-GO_data$FLEM16
+
+###Convert the gene symbols to Entrez Gene IDs###
+
+L0 <- mapIds(org.Mm.eg.db,
+L0,
+"ENTREZID", "SYMBOL")
+L0 <- L0[!is.na(L0)]
+
+L2 <- mapIds(org.Mm.eg.db,
+L2,
+"ENTREZID", "SYMBOL")
+L2 <- L2[!is.na(L2)]
+
+L3 <- mapIds(org.Mm.eg.db,
+L3,
+"ENTREZID", "SYMBOL")
+L3 <- L3[!is.na(L3)]
+
+L5 <- mapIds(org.Mm.eg.db,
+L5,
+"ENTREZID", "SYMBOL")
+L5 <- L5[!is.na(L5)]
+
+L6 <- mapIds(org.Mm.eg.db,
+L6,
+"ENTREZID", "SYMBOL")
+L6 <- L6[!is.na(L6)]
+
+L7 <- mapIds(org.Mm.eg.db,
+L7,
+"ENTREZID", "SYMBOL")
+L7 <- L7[!is.na(L7)]
+
+M0 <- mapIds(org.Mm.eg.db,
+M0,
+"ENTREZID", "SYMBOL")
+M0 <- M0[!is.na(M0)]
+
+M2 <- mapIds(org.Mm.eg.db,
+M2,
+"ENTREZID", "SYMBOL")
+M2 <- M2[!is.na(M2)]
+
+M3 <- mapIds(org.Mm.eg.db,
+M3,
+"ENTREZID", "SYMBOL")
+M3 <- M3[!is.na(M3)]
+
+BML16 <- mapIds(org.Mm.eg.db,
+BML16,
+"ENTREZID", "SYMBOL")
+BML16 <- BML16[!is.na(BML16)]
+
+FLL16 <- mapIds(org.Mm.eg.db,
+FLL16,
+"ENTREZID", "SYMBOL")
+FLL16 <- FLL16[!is.na(FLL16)]
+
+BMLP0 <- mapIds(org.Mm.eg.db,
+BMLP0,
+"ENTREZID", "SYMBOL")
+BMLP0 <- BMLP0[!is.na(BMLP0)]
+
+FLLP0 <- mapIds(org.Mm.eg.db,
+FLLP0,
+"ENTREZID", "SYMBOL")
+FLLP0 <- FLLP0[!is.na(FLLP0)]
+
+BMT16 <- mapIds(org.Mm.eg.db,
+BMT16,
+"ENTREZID", "SYMBOL")
+BMT16 <- BMT16[!is.na(BMT16)]
+
+BMM16 <- mapIds(org.Mm.eg.db,
+BMM16,
+"ENTREZID", "SYMBOL")
+BMM16 <- BMM16[!is.na(BMM16)]
+
+FLEM16 <- mapIds(org.Mm.eg.db,
+FLEM16,
+"ENTREZID", "SYMBOL")
+FLEM16 <- FLEM16[!is.na(FLEM16)]
+
+```
+Now convert each to an excel workbook:
+```{r}
+L0 <-unlist(L0)
+write.csv(L0, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L0.csv")
+L2 <-unlist(L2)
+write.csv(L2, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L2.csv")
+L3 <-unlist(L3)
+write.csv(L3, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L3.csv")
+L5 <-unlist(L5)
+write.csv(L5, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L5.csv")
+L6 <-unlist(L6)
+write.csv(L6, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L6.csv")
+L7 <-unlist(L7)
+write.csv(L7, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L7.csv")
+M0 <-unlist(M0)
+write.csv(M0, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/M0.csv")
+M2 <-unlist(M2)
+write.csv(M2, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/M2.csv")
+M3 <-unlist(M3)
+write.csv(M3, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/M3.csv")
+BML16 <-unlist(BML16)
+write.csv(BML16, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BML16.csv")
+FLL16 <-unlist(FLL16)
+write.csv(FLL16, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/FLL16.csv")
+BMLP0 <-unlist(BMLP0)
+write.csv(BMLP0, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BMLP0.csv")
+FLLP0 <-unlist(FLLP0)
+write.csv(FLLP0, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/FLLP0.csv")
+BMT16 <-unlist(BMT16)
+write.csv(BMT16, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BMT16.csv")
+BMM16 <-unlist(BMM16)
+write.csv(BMM16, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BMM16.csv")
+FLEM16 <-unlist(FLEM16)
+write.csv(L0, "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/FLEM16.csv")
+
+```
+Now, import each as a dataframe:
+```{r}
+L0_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L0.csv", header = FALSE)
+L2_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L2.csv", header = FALSE)
+L3_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L3.csv", header = FALSE)
+L5_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L5.csv", header = FALSE)
+L6_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L6.csv", header = FALSE)
+L7_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L7.csv", header = FALSE)
+M0_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/M0.csv", header = FALSE)
+M2_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/M2.csv", header = FALSE)
+M3_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/M3.csv", header = FALSE)
+BML16_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BML16.csv", header = FALSE)
+FLL16_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/FLL16.csv", header = FALSE)
+BMLP0_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BMLP0.csv", header = FALSE)
+FLLP0_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/FLLP0.csv", header = FALSE)
+BMT16_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BMT16.csv", header = FALSE)
+BMM16_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BMM16.csv", header = FALSE)
+FLEM16_IDs <- read.csv("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/FLEM16.csv", header = FALSE)
+```
+Now convert each of the gene ID columns into vectors:
+```{r}
+L0_IDS <- as.vector(L0_IDs[,1])
+L2_IDS <- as.vector(L2_IDs[,1])
+L3_IDS <- as.vector(L3_IDs[,1])
+L5_IDS <- as.vector(L5_IDs[,1])
+L6_IDS <- as.vector(L6_IDs[,1])
+L7_IDS <- as.vector(L7_IDs[,1])
+M0_IDS <- as.vector(M0_IDs[,1])
+M2_IDS <- as.vector(M2_IDs[,1])
+M3_IDS <- as.vector(M3_IDs[,1])
+BML16_IDS <- as.vector(BML16_IDs[,1])
+FLL16_IDS <- as.vector(FLL16_IDs[,1])
+BMLP0_IDS <- as.vector(BMLP0_IDs[,1])
+FLLP0_IDS <- as.vector(FLLP0_IDs[,1])
+BMT16_IDS <- as.vector(BMT16_IDs[,1])
+BMM16_IDS <- as.vector(BMM16_IDs[,1])
+FLEM16_IDS <- as.vector(FLEM16_IDs[,1])
+
+```
+Now attempt to run Hyunjin's program with each vector:
+```{r}
+L0_GO <- pathwayAnalysis_CP(geneList = L0_IDS, org = "mouse", database = "GO", title = "L0_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(L0_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L0_GO_results.csv", row.names = FALSE)
+
+L2_GO <- pathwayAnalysis_CP(geneList = L2_IDS, org = "mouse", database = "GO", title = "L2_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(L2_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L2_GO_results.csv", row.names = FALSE)
+
+L3_GO <- pathwayAnalysis_CP(geneList = L3_IDS, org = "mouse", database = "GO", title = "L3_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(L3_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L3_GO_results.csv", row.names = FALSE)
+
+L5_GO <- pathwayAnalysis_CP(geneList = L5_IDS, org = "mouse", database = "GO", title = "L5_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(L5_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L5_GO_results.csv", row.names = FALSE)
+
+L6_GO <- pathwayAnalysis_CP(geneList = L6_IDS, org = "mouse", database = "GO", title = "L6_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(L6_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L6_GO_results.csv", row.names = FALSE)
+
+L7_GO <- pathwayAnalysis_CP(geneList = L7_IDS, org = "mouse", database = "GO", title = "L7_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(L7_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/L7_GO_results.csv", row.names = FALSE)
+
+M0_GO <- pathwayAnalysis_CP(geneList = M0_IDS, org = "mouse", database = "GO", title = "M0_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(M0_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/M0_GO_results.csv", row.names = FALSE)
+
+M2_GO <- pathwayAnalysis_CP(geneList = M2_IDS, org = "mouse", database = "GO", title = "M2_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(M2_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/M2_GO_results.csv", row.names = FALSE)
+
+M3_GO <- pathwayAnalysis_CP(geneList = M3_IDS, org = "mouse", database = "GO", title = "M3_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(M3_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/M3_GO_results.csv", row.names = FALSE)
+
+BML16_GO <- pathwayAnalysis_CP(geneList = BML16_IDS, org = "mouse", database = "GO", title = "BML16_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(BML16_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BML16_GO_results.csv", row.names = FALSE)
+
+FLL16_GO <- pathwayAnalysis_CP(geneList = FLL16_IDS, org = "mouse", database = "GO", title = "FLL16_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(FLL16_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/FLL16_GO_results.csv", row.names = FALSE)
+
+BMLP0_GO <- pathwayAnalysis_CP(geneList = BMLP0_IDS, org = "mouse", database = "GO", title = "BMLP0_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(BMLP0_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BMLP0_GO_results.csv", row.names = FALSE)
+
+FLLP0_GO <- pathwayAnalysis_CP(geneList = FLLP0_IDS, org = "mouse", database = "GO", title = "FLLP0_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(FLLP0_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/FLLP0_GO_results.csv", row.names = FALSE)
+
+BMT16_GO <- pathwayAnalysis_CP(geneList = BMT16_IDS, org = "mouse", database = "GO", title = "BMT16_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(BMT16_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BMT16_GO_results.csv", row.names = FALSE)
+
+BMM16_GO <- pathwayAnalysis_CP(geneList = BMM16_IDS, org = "mouse", database = "GO", title = "BMM16_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(BMM16_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/BMM16_GO_results.csv", row.names = FALSE)
+
+FLEM16_GO <- pathwayAnalysis_CP(geneList = FLEM16_IDS, org = "mouse", database = "GO", title = "FLEM16_GO_Terms", displayNum = 10, imgPrint = TRUE, dir = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/") 
+write.csv(FLEM16_GO, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/FLEM16_GO_results.csv", row.names = FALSE)
+
+
+```

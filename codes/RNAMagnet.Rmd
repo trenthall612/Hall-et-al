@@ -1,0 +1,2059 @@
+---
+title: "RNAMagnet"
+author: "Trent"
+date: "1/4/2021"
+output: html_document
+---
+
+Use the code provided by Hyunjin here: https://github.com/hjkim88/Hematopoiesis/blob/master/codes/Additional_Analysis_Nov_2020.R to proceed. He has updated the RNAMagnet code.Ensure that for the anchors, you always have >1 anchor. Goingt to do some test runs with just the adult stroma.
+
+```{r}
+results <- RNAMagnetAnchors(StromaADULT_regress2, c("F-1", "F-2"), return = "summary", neighborhood.distance = 0.7, neighborhood.gradient = 3, .k = 10, .x0 = 0.5, .minExpression = 0, .minMolecules = 1, .version = "1.0.0", .cellularCompartment = c("Membrane","ECM","Both"), .manualAnnotation = "Correct" )
+
+```
+Look at the adhesiveness and direction:
+```{r}
+qplot(x =Embeddings(StromaADULT_regress2,reduction="umap")[,1], y=Embeddings(StromaADULT_regress2,reduction="umap")[,2], color = direction,size=I(0.75),alpha= adhesiveness,data=results) + scale_color_brewer(name = "RNAMagnet\nLocation",palette= "Set1") + scale_alpha_continuous(name = "RNAMagnet\nAdhesiveness") + theme_bw() + theme(panel.grid = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+```
+Try to identify interaction scores and ligand-receptor pairs:
+```{r}
+result2 <- RNAMagnetSignaling(StromaADULT_regress2, .version = "1.0.0")
+```
+Look for specific ligand-receptor pairs and interaction scores between them:
+```{r}
+interaction_list <- getRNAMagnetGenes(result2, "F-1", "F-2", thresh = 0)
+```
+Write the file to .csv format so you can see the entire interaction list:
+```{r}
+write.csv(interaction_list, file = "interaction_list_test.csv")
+```
+Very cool: Look for the strength of signal from a particular cluster or population that other cells in the object are receiving:
+```{r}
+qplot(x =Embeddings(StromaADULT_regress2,reduction="umap")[,1], y=Embeddings(StromaADULT_regress2,reduction="umap")[,2], color = result2@specificity[,"F-1"] ,size=I(0.75)) + scale_color_gradientn(name = "Strength of signal\nfrom F-1",colours = c("black","blue","red")) + theme_bw() + theme(panel.grid = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+```
+```
+2/9/2021: Creating an object with just adult stroma and LTHSCs:
+```{r}
+library(Seurat)
+RNAMagnet_Combined_Object <- readRDS("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/Combined_Seurat_Obj.RDS")
+View(RNAMagnet_Combined_Object@meta.data)
+RNAMagnet_Adult <- subset(RNAMagnet_Combined_Object, Development %in% c("ADULT"))
+RNAMagnet_Adult@meta.data$Annotation2 <- RNAMagnet_Adult@meta.data$Cell_Type
+RNAMagnet_Adult@meta.data$Annotation2[which(RNAMagnet_Adult@meta.data$HSPC == "LTHSC")] <- "LTHSC"
+RNAMagnet_Adult@meta.data$Annotation2[which(RNAMagnet_Adult@meta.data$Annotation2 == "Stroma")] <- as.character(RNAMagnet_Adult@meta.data$Annotation[which(RNAMagnet_Adult@meta.data$Annotation2 == "Stroma")])
+View(RNAMagnet_Adult@meta.data)
+AdultStromavLTHSC <- subset(RNAMagnet_Adult, Annotation2 %in% c("LTHSC", 'AECs', 'C-1','C-2','C-3','CARs','F-1','F-2','F-3','F-4','F-5','F-6','Osteo','P-1','P-2','P-3','SECs',''))
+AdultStromavLTHSC <- RunUMAP(AdultStromavLTHSC, dims = 1:15)
+DimPlot(AdultStromavLTHSC, label = TRUE, pt.size = 2)
+
+```
+Creating an object with just E16 Stroma and LTHSCs:
+```{r}
+RNAMagnet_E16 <- subset(RNAMagnet_Combined_Object, Development %in% c("E16"))
+RNAMagnet_E16@meta.data$Annotation2 <- RNAMagnet_E16@meta.data$Cell_Type
+RNAMagnet_E16@meta.data$Annotation2[which(RNAMagnet_E16@meta.data$HSPC == "LTHSC")] <- "LTHSC"
+RNAMagnet_E16@meta.data$Annotation2[which(RNAMagnet_E16@meta.data$Annotation2 == "Stroma")] <- as.character(RNAMagnet_E16@meta.data$Annotation[which(RNAMagnet_E16@meta.data$Annotation2 == "Stroma")])
+View(RNAMagnet_E16@meta.data)
+E16StromavLTHSC <- subset(RNAMagnet_E16, Annotation2 %in% c("LTHSC", 'C-1','C-2','C-3','C-4','C-5','ECs','F-1','F-2','F-3','F-4','F-5','F-6','P-1','P-2','Schwann','UD'))
+DimPlot(E16StromavLTHSC)
+E16StromavLTHSC <- RenameIdents(object = E16StromavLTHSC, 'BCell' = 'LTHSCs', 'Mast1'='LTHSCs','Mast3'='LTHSCs','Mono/Mast'='LTHSCs','TCell1'='LTHSCs','TCell4'='LTHSCs','TCell5'='LTHSCs')
+DimPlot(E16StromavLTHSC)
+E16StromavLTHSC <- RunUMAP(E16StromavLTHSC, dims = 1:15)
+DimPlot(E16StromavLTHSC, label = TRUE, pt.size = 2)
+```
+Creating an object with just E18 Stroma and LTHSCs:
+```{r}
+RNAMagnet_E18 <- subset(RNAMagnet_Combined_Object, Development %in% c("E18"))
+RNAMagnet_E18@meta.data$Annotation2 <- RNAMagnet_E18@meta.data$Cell_Type
+RNAMagnet_E18@meta.data$Annotation2[which(RNAMagnet_E18@meta.data$HSPC == "LTHSC")] <- "LTHSC"
+RNAMagnet_E18@meta.data$Annotation2[which(RNAMagnet_E18@meta.data$Annotation2 == "Stroma")] <- as.character(RNAMagnet_E18@meta.data$Annotation[which(RNAMagnet_E18@meta.data$Annotation2 == "Stroma")])
+View(RNAMagnet_E18@meta.data)
+E18StromavLTHSC <- subset(RNAMagnet_E18, Annotation2 %in% c("LTHSC", 'C-1','C-2','C-3','C-4','C-5','C/F-1', 'C/F-2','C/F-3','C/F-4', 'ECs','F-1','F-2','P-1','P-2','Schwann'))
+DimPlot(E18StromavLTHSC)
+E18StromavLTHSC <- RenameIdents(object = E18StromavLTHSC, 'Mono3' = 'LTHSCs', 'MyP1'='LTHSCs','Prog'='LTHSCs')
+DimPlot(E18StromavLTHSC, label = TRUE, pt.size = 2)
+E18StromavLTHSC <- RunUMAP(E18StromavLTHSC, dims = 1:15)
+```
+Creating an object with just P0 Stroma and LTHSCs:
+```{r}
+RNAMagnet_P0 <- subset(RNAMagnet_Combined_Object, Development %in% c("P0"))
+RNAMagnet_P0@meta.data$Annotation2 <- RNAMagnet_P0@meta.data$Cell_Type
+RNAMagnet_P0@meta.data$Annotation2[which(RNAMagnet_P0@meta.data$HSPC == "LTHSC")] <- "LTHSC"
+RNAMagnet_P0@meta.data$Annotation2[which(RNAMagnet_P0@meta.data$Annotation2 == "Stroma")] <- as.character(RNAMagnet_P0@meta.data$Annotation[which(RNAMagnet_P0@meta.data$Annotation2 == "Stroma")])
+View(RNAMagnet_P0@meta.data)
+P0StromavLTHSC <- subset(RNAMagnet_P0, Annotation2 %in% c("LTHSC",'C/F-1','C/F-2','C/F-3','C/F-4','C/F-5','C/F-6','C/F-7','ECs','F-1','F-2','F-3','F-4','F-5','P-1','P-2','Schwann','UD-1','UD-2','UD-3'))
+DimPlot(P0StromavLTHSC)
+P0StromavLTHSC <- RenameIdents(object = P0StromavLTHSC, 'MegP'='LTHSCs','Mono1'='LTHSCs','Prog1'='LTHSCs','Prog2'='LTHSCs','Prog3'='LTHSCs')
+P0StromavLTHSC <- RunUMAP(P0StromavLTHSC, dims = 1:15)
+DimPlot(P0StromavLTHSC, label = TRUE, pt.size = 2)
+```
+Create an object with Adult Stroma and MPP2s:
+```{r}
+RNAMagnet_Adult@meta.data$Annotation3 <- RNAMagnet_Adult@meta.data$Cell_Type
+RNAMagnet_Adult@meta.data$Annotation3[which(RNAMagnet_Adult@meta.data$HSPC == "MPP2")] <- "MPP2"
+RNAMagnet_Adult@meta.data$Annotation3[which(RNAMagnet_Adult@meta.data$Annotation3 == "Stroma")] <- as.character(RNAMagnet_Adult@meta.data$Annotation[which(RNAMagnet_Adult@meta.data$Annotation3 == "Stroma")])
+View(RNAMagnet_Adult@meta.data)
+AdultStromavMPP2 <- subset(RNAMagnet_Adult, Annotation3 %in% c("MPP2", 'AECs', 'C-1','C-2','C-3','CARs','F-1','F-2','F-3','F-4','F-5','F-6','Osteo','P-1','P-2','P-3','SECs',''))
+DimPlot(AdultStromavMPP2)
+AdultStromavMPP2 <- RenameIdents(object = AdultStromavMPP2, 'Bcell1'='MPP2s','EryP'='MPP2s','Mast1'='MPP2s','Mast2'='MPP2s','MegP'='MPP2s','Mono1'='MPP2s','Mono2'='MPP2s','Mono3'='MPP2s','MyP1'='MPP2s','MyP2'='MPP2s','Neu'='MPP2s','Pre/Pro-B1'='MPP2s','Pre/Pro-B2'='MPP2s','Prog'='MPP2s','T/NK'='MPP2s')
+AdultStromavMPP2 <- RunUMAP(AdultStromavMPP2, dims = 1:15)
+DimPlot(AdultStromavMPP2, label = TRUE, pt.size = 2)
+```
+Create an object with E16 Stroma and MPP2s:
+```{r}
+RNAMagnet_E16@meta.data$Annotation3 <- RNAMagnet_E16@meta.data$Cell_Type
+RNAMagnet_E16@meta.data$Annotation3[which(RNAMagnet_E16@meta.data$HSPC == "MPP2")] <- "MPP2"
+RNAMagnet_E16@meta.data$Annotation3[which(RNAMagnet_E16@meta.data$Annotation3 == "Stroma")] <- as.character(RNAMagnet_E16@meta.data$Annotation[which(RNAMagnet_E16@meta.data$Annotation3 == "Stroma")])
+View(RNAMagnet_E16@meta.data)
+E16StromavMPP2 <- subset(RNAMagnet_E16, Annotation3 %in% c("MPP2", 'C-1','C-2','C-3','C-4','C-5','ECs','F-1','F-2','F-3','F-4','F-5','F-6','P-1','P-2','Schwann','UD'))
+DimPlot(E16StromavMPP2)
+E16StromavMPP2 <- RenameIdents(object = E16StromavMPP2, 'BCell'='MPP2s','DC'='MPP2s','Mast1'='MPP2s','Mast2'='MPP2s','Mast3'='MPP2s','Mono/Mast'='MPP2s','Prog'='MPP2s','TCell3'='MPP2s','TCell5'='MPP2s')
+E16StromavMPP2 <- RunUMAP(E16StromavMPP2, dims = 1:15)
+DimPlot(E16StromavMPP2, label = TRUE, pt.size = 2)
+```
+Create an object with E18 Stroma and MPP2s:
+```{r}
+RNAMagnet_E18@meta.data$Annotation3 <- RNAMagnet_E18@meta.data$Cell_Type
+RNAMagnet_E18@meta.data$Annotation3[which(RNAMagnet_E18@meta.data$HSPC == "MPP2")] <- "MPP2"
+RNAMagnet_E18@meta.data$Annotation3[which(RNAMagnet_E18@meta.data$Annotation3 == "Stroma")] <- as.character(RNAMagnet_E18@meta.data$Annotation[which(RNAMagnet_E18@meta.data$Annotation3 == "Stroma")])
+View(RNAMagnet_E18@meta.data)
+E18StromavMPP2 <- subset(RNAMagnet_E18, Annotation3 %in% c("MPP2", 'C-1','C-2','C-3','C-4','C-5','C/F-1', 'C/F-2','C/F-3','C/F-4', 'ECs','F-1','F-2','P-1','P-2','Schwann'))
+DimPlot(E18StromavMPP2)
+E18StromavMPP2 <- RenameIdents(object = E18StromavMPP2, 'BCell'='MPP2s','EryP/MegP'='MPP2s','Mast1'='MPP2s','Mono1'='MPP2s','Mono3'='MPP2s','Mono5'='MPP2s','Mono6'='MPP2s','MyP1'='MPP2s','Prog'='MPP2s','TCell'='MPP2s')
+E18StromavMPP2 <- RunUMAP(E18StromavMPP2, dims = 1:15)
+DimPlot(E18StromavMPP2, label = TRUE, pt.size = 2)
+```
+Create an object with P0 Stroma and MPP2s:
+```{r}
+RNAMagnet_P0@meta.data$Annotation3 <- RNAMagnet_P0@meta.data$Cell_Type
+RNAMagnet_P0@meta.data$Annotation3[which(RNAMagnet_P0@meta.data$HSPC == "MPP2")] <- "MPP2"
+RNAMagnet_P0@meta.data$Annotation3[which(RNAMagnet_P0@meta.data$Annotation3 == "Stroma")] <- as.character(RNAMagnet_P0@meta.data$Annotation[which(RNAMagnet_P0@meta.data$Annotation3 == "Stroma")])
+View(RNAMagnet_P0@meta.data)
+P0StromavMPP2 <- subset(RNAMagnet_P0, Annotation3 %in% c("MPP2", 'C/F-1','C/F-2','C/F-3','C/F-4','C/F-5','C/F-6','C/F-7','ECs','F-1','F-2','F-3','F-4','F-5','P-1','P-2','Schwann','UD-1','UD-2','UD-3'))
+DimPlot(P0StromavMPP2)
+P0StromavMPP2 <- RenameIdents(object = P0StromavMPP2, 'Bas'='MPP2s','Bcell1'='MPP2s','BCell2'='MPP2s','DC'='MPP2s','Eos/Bas'='MPP2s','EryP'='MPP2s','Mast1'='MPP2s','Mast2'='MPP2s','MegP'='MPP2s','Mono1'='MPP2s','Mono2'='MPP2s','MyP1'='MPP2s','Prog1'='MPP2s','Prog2'='MPP2s','Prog3'='MPP2s','TCell'='MPP2s')
+P0StromavMPP2 <- RunUMAP(P0StromavMPP2, dims = 1:15)
+DimPlot(P0StromavMPP2, label = TRUE, pt.size = 2)
+```
+Save all objects for later:
+```{r}
+save(AdultStromavLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavLTHSC.Robj")
+save(AdultStromavMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavMPP2.Robj")
+save(P0StromavLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavLTHSC.Robj")
+save(P0StromavMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavMPP2.Robj")
+save(E18StromavLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavLTHSC.Robj")
+save(E18StromavMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavMPP2.Robj")
+save(E16StromavLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavLTHSC.Robj")
+save(E16StromavMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavMPP2.Robj")
+```
+Load all objects and reannotate stromal populations:
+```{r}
+library(Seurat)
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavLTHSC.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavMPP2.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavLTHSC.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavMPP2.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavLTHSC.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavMPP2.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavLTHSC.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavMPP2.Robj")
+DimPlot(AdultStromavLTHSC, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(E16StromavLTHSC, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(E18StromavLTHSC, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(P0StromavLTHSC, reduction = 'umap', label = TRUE, pt.size = 2)
+E16StromavLTHSC <- RenameIdents(object = E16StromavLTHSC, 'C-1'='C1','C-2'='C2','C-3'='C3','F-1'='F1','F-2'='F2','F-3'='F3','F-4'='F4','F-5'='F5','F-6'='F6','P-1'='P1i','P-2'='P1ii','C-4'='C4','C-5'='C5','UD'='UD1')
+E18StromavLTHSC <- RenameIdents(object = E18StromavLTHSC, 'C-1'='C1i','C-2'='C6','C-3'='C7','F-1'='F3i','F-2'='F3ii','C/F-1'='F2','C/F-2'='CF1','C/F-3'='C2ii','C/F-4'='C1ii','P-1'='P1','P-2'='P2','C-4'='C5','C-5'='C2i')
+P0StromavLTHSC <- RenameIdents(object = P0StromavLTHSC, 'F-1'='F7','F-2'='C5','F-3'='F3i','F-4'='F5','F-5'='F3ii','C/F-1'='C8','C/F-2'='C1','C/F-3'='CF2','C/F-4'='CF1','C/F-5'='F2','C/F-6'='C2i','C/F-7'='C2ii','P-1'='P3','P-2'='P2','UD-1'='UD2','UD-2'='UD3','UD-3'='UD4')
+AdultStromavLTHSC <- RenameIdents(object = AdultStromavLTHSC, 'C-1'='C9','C-2'='C10','C-3'='C11','F-1'='F8','F-2'='F9','F-3'='F10','F-4'='F11','F-5'='F12','F-6'='F13','P-1'='P4','P-2'='P1','P-3'='P5')
+DimPlot(AdultStromavLTHSC, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(E16StromavLTHSC, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(E18StromavLTHSC, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(P0StromavLTHSC, reduction = 'umap', label = TRUE, pt.size = 2)
+AdultStromavMPP2 <- RenameIdents(object = AdultStromavMPP2, 'C-1'='C9','C-2'='C10','C-3'='C11','F-1'='F8','F-2'='F9','F-3'='F10','F-4'='F11','F-5'='F12','F-6'='F13','P-1'='P4','P-2'='P1','P-3'='P5')
+E16StromavMPP2 <- RenameIdents(object = E16StromavMPP2, 'C-1'='C1','C-2'='C2','C-3'='C3','F-1'='F1','F-2'='F2','F-3'='F3','F-4'='F4','F-5'='F5','F-6'='F6','P-1'='P1i','P-2'='P1ii','C-4'='C4','C-5'='C5','UD'='UD1')
+E18StromavMPP2 <- RenameIdents(object = E18StromavMPP2, 'C-1'='C1i','C-2'='C6','C-3'='C7','F-1'='F3i','F-2'='F3ii','C/F-1'='F2','C/F-2'='CF1','C/F-3'='C2ii','C/F-4'='C1ii','P-1'='P1','P-2'='P2','C-4'='C5','C-5'='C2i')
+P0StromavMPP2 <- RenameIdents(object = P0StromavMPP2, 'F-1'='F7','F-2'='C5','F-3'='F3i','F-4'='F5','F-5'='F3ii','C/F-1'='C8','C/F-2'='C1','C/F-3'='CF2','C/F-4'='CF1','C/F-5'='F2','C/F-6'='C2i','C/F-7'='C2ii','P-1'='P3','P-2'='P2','UD-1'='UD2','UD-2'='UD3','UD-3'='UD4')
+save(AdultStromavLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavLTHSC.Robj")
+save(AdultStromavMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavMPP2.Robj")
+save(P0StromavLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavLTHSC.Robj")
+save(P0StromavMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavMPP2.Robj")
+save(E18StromavLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavLTHSC.Robj")
+save(E18StromavMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavMPP2.Robj")
+save(E16StromavLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavLTHSC.Robj")
+save(E16StromavMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavMPP2.Robj")
+AdultStromavMPP2_NA <- RenameIdents(object = AdultStromavMPP2, 'C9'='Stroma','C10'='Stroma','C11'='Stroma','F8'='Stroma','F9'='Stroma','F10'='Stroma','F11'='Stroma','F12'='Stroma','F13'='Stroma','P4'='Stroma','P1'='Stroma','P5'='Stroma','AECs'='Stroma','CARs'='Stroma','Osteo'='Stroma','SECs'='Stroma')
+E16StromavMPP2_NA <- RenameIdents(object = E16StromavMPP2, 'C1'='Stroma','C2'='Stroma','C3'='Stroma','F1'='Stroma','F2'='Stroma','F3'='Stroma','F4'='Stroma','F5'='Stroma','F6'='Stroma','P1i'='Stroma','P1ii'='Stroma','C4'='Stroma','C5'='Stroma','UD1'='Stroma','ECs'='Stroma','Schwann'='Stroma')
+E18StromavMPP2_NA <- RenameIdents(object = E18StromavMPP2, 'C1i'='Stroma','C6'='Stroma','C7'='Stroma','F3i'='Stroma','F3ii'='Stroma','F2'='Stroma','CF1'='Stroma','C2ii'='Stroma','C1ii'='Stroma','P1'='Stroma','P2'='Stroma','C5'='Stroma','C2i'='Stroma','ECs'='Stroma','Schwann'='Stroma','UD1'='Stroma')
+P0StromavMPP2_NA <- RenameIdents(object = P0StromavMPP2, 'F7'='Stroma','C5'='Stroma','F3i'='Stroma','F5'='Stroma','F3ii'='Stroma','C8'='Stroma','C1'='Stroma','CF2'='Stroma','CF1'='Stroma','F2'='Stroma','C2i'='Stroma','C2ii'='Stroma','P3'='Stroma','P2'='Stroma','UD2'='Stroma','UD3'='Stroma','UD4'='Stroma','ECs'='Stroma','Schwann'='Stroma')
+AdultStromavLTHSC_NA <- RenameIdents(object = AdultStromavLTHSC, 'C9'='Stroma','C10'='Stroma','C11'='Stroma','F8'='Stroma','F9'='Stroma','F10'='Stroma','F11'='Stroma','F12'='Stroma','F13'='Stroma','P4'='Stroma','P1'='Stroma','P5'='Stroma','AECs'='Stroma','CARs'='Stroma','Osteo'='Stroma','SECs'='Stroma')
+E16StromavLTHSC_NA <- RenameIdents(object = E16StromavLTHSC, 'C1'='Stroma','C2'='Stroma','C3'='Stroma','F1'='Stroma','F2'='Stroma','F3'='Stroma','F4'='Stroma','F5'='Stroma','F6'='Stroma','P1i'='Stroma','P1ii'='Stroma','C4'='Stroma','C5'='Stroma','UD1'='Stroma','ECs'='Stroma','Schwann'='Stroma')
+E18StromavLTHSC_NA <- RenameIdents(object = E18StromavLTHSC, 'C1i'='Stroma','C6'='Stroma','C7'='Stroma','F3i'='Stroma','F3ii'='Stroma','F2'='Stroma','CF1'='Stroma','C2ii'='Stroma','C1ii'='Stroma','P1'='Stroma','P2'='Stroma','C5'='Stroma','C2i'='Stroma','ECs'='Stroma','Schwann'='Stroma','UD1'='Stroma')
+P0StromavLTHSC_NA <- RenameIdents(object = P0StromavLTHSC, 'F7'='Stroma','C5'='Stroma','F3i'='Stroma','F5'='Stroma','F3ii'='Stroma','C8'='Stroma','C1'='Stroma','CF2'='Stroma','CF1'='Stroma','F2'='Stroma','C2i'='Stroma','C2ii'='Stroma','P3'='Stroma','P2'='Stroma','UD2'='Stroma','UD3'='Stroma','UD4'='Stroma','ECs'='Stroma','Schwann'='Stroma')
+DimPlot(AdultStromavLTHSC_NA, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(E16StromavLTHSC_NA, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(E18StromavLTHSC_NA, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(P0StromavLTHSC_NA, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(AdultStromavMPP2_NA, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(E16StromavMPP2_NA, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(E18StromavMPP2_NA, reduction = 'umap', label = TRUE, pt.size = 2)
+DimPlot(P0StromavMPP2_NA, reduction = 'umap', label = TRUE, pt.size = 2)
+save(AdultStromavLTHSC_NA, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavLTHSC_NA.Robj")
+save(AdultStromavMPP2_NA, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavMPP2_NA.Robj")
+save(P0StromavLTHSC_NA, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavLTHSC_NA.Robj")
+save(P0StromavMPP2_NA, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavMPP2_NA.Robj")
+save(E18StromavLTHSC_NA, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavLTHSC_NA.Robj")
+save(E18StromavMPP2_NA, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavMPP2_NA.Robj")
+save(E16StromavLTHSC_NA, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavLTHSC_NA.Robj")
+save(E16StromavMPP2_NA, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavMPP2_NA.Robj")
+```
+Run RNAMagnetAnchors for physical interactions--> Creates a dataframe that contains 1.)The anchor population that a cell is most specifically interacting with ('direction') 2.) The overall strength of the interaction ('adhesiveness') 3.) Specificity scores for interaction with each of the anchor populations
+```{r}
+library(ggplot2)
+library(Rmagic)
+library(RNAMagnet)
+AdultStromavLTHSC_NA_Anchors <- RNAMagnetAnchors(AdultStromavLTHSC_NA, c("LTHSCs",'Stroma'), return = "summary", neighborhood.distance = 0.7, neighborhood.gradient = 3, .k = 10, .x0 = 0.5, .minExpression = 0, .minMolecules = 1, .version = "1.0.0", .cellularCompartment = c("Membrane","ECM","Both"), .manualAnnotation = "Correct" )
+E16StromavLTHSC_NA_Anchors <- RNAMagnetAnchors(E16StromavLTHSC_NA, c("LTHSCs",'Stroma'), return = "summary", neighborhood.distance = 0.7, neighborhood.gradient = 3, .k = 10, .x0 = 0.5, .minExpression = 0, .minMolecules = 1, .version = "1.0.0", .cellularCompartment = c("Membrane","ECM","Both"), .manualAnnotation = "Correct" )
+E18StromavLTHSC_NA_Anchors <- RNAMagnetAnchors(E18StromavLTHSC_NA, c("LTHSCs",'Stroma'), return = "summary", neighborhood.distance = 0.7, neighborhood.gradient = 3, .k = 10, .x0 = 0.5, .minExpression = 0, .minMolecules = 1, .version = "1.0.0", .cellularCompartment = c("Membrane","ECM","Both"), .manualAnnotation = "Correct" )
+P0StromavLTHSC_NA_Anchors <- RNAMagnetAnchors(P0StromavLTHSC_NA, c("LTHSCs",'Stroma'), return = "summary", neighborhood.distance = 0.7, neighborhood.gradient = 3, .k = 10, .x0 = 0.5, .minExpression = 0, .minMolecules = 1, .version = "1.0.0", .cellularCompartment = c("Membrane","ECM","Both"), .manualAnnotation = "Correct" )
+AdultStromavMPP2_NA_Anchors <- RNAMagnetAnchors(AdultStromavMPP2_NA, c("MPP2s",'Stroma'), return = "summary", neighborhood.distance = 0.7, neighborhood.gradient = 3, .k = 10, .x0 = 0.5, .minExpression = 0, .minMolecules = 1, .version = "1.0.0", .cellularCompartment = c("Membrane","ECM","Both"), .manualAnnotation = "Correct" )
+E16StromavMPP2_NA_Anchors <- RNAMagnetAnchors(E16StromavMPP2_NA, c("MPP2s",'Stroma'), return = "summary", neighborhood.distance = 0.7, neighborhood.gradient = 3, .k = 10, .x0 = 0.5, .minExpression = 0, .minMolecules = 1, .version = "1.0.0", .cellularCompartment = c("Membrane","ECM","Both"), .manualAnnotation = "Correct" )
+E18StromavMPP2_NA_Anchors <- RNAMagnetAnchors(E18StromavMPP2_NA, c("MPP2s",'Stroma'), return = "summary", neighborhood.distance = 0.7, neighborhood.gradient = 3, .k = 10, .x0 = 0.5, .minExpression = 0, .minMolecules = 1, .version = "1.0.0", .cellularCompartment = c("Membrane","ECM","Both"), .manualAnnotation = "Correct" )
+P0StromavMPP2_NA_Anchors <- RNAMagnetAnchors(P0StromavMPP2_NA, c("MPP2s",'Stroma'), return = "summary", neighborhood.distance = 0.7, neighborhood.gradient = 3, .k = 10, .x0 = 0.5, .minExpression = 0, .minMolecules = 1, .version = "1.0.0", .cellularCompartment = c("Membrane","ECM","Both"), .manualAnnotation = "Correct" )
+
+
+```
+Visualize Adhesiveness and Direction
+```{r}
+AdultStromavLTHSC_NA_plot <- qplot(x =Embeddings(AdultStromavLTHSC_NA,reduction="umap")[,1], y=Embeddings(AdultStromavLTHSC_NA,reduction="umap")[,2], color = direction,size=I(0.75),alpha= adhesiveness,data=AdultStromavLTHSC_NA_Anchors) + scale_color_brewer(name = "RNAMagnet\nLocation",palette= "Set1") + scale_alpha_continuous(name = "RNAMagnet\nAdhesiveness") + theme_bw() + theme(panel.grid = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+AdultStromavMPP2_NA_plot <- qplot(x =Embeddings(AdultStromavMPP2_NA,reduction="umap")[,1], y=Embeddings(AdultStromavMPP2_NA,reduction="umap")[,2], color = direction,size=I(0.75),alpha= adhesiveness,data=AdultStromavMPP2_NA_Anchors) + scale_color_brewer(name = "RNAMagnet\nLocation",palette= "Set1") + scale_alpha_continuous(name = "RNAMagnet\nAdhesiveness") + theme_bw() + theme(panel.grid = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+E16StromavLTHSC_NA_plot <- qplot(x =Embeddings(E16StromavLTHSC_NA,reduction="umap")[,1], y=Embeddings(E16StromavLTHSC_NA,reduction="umap")[,2], color = direction,size=I(0.75),alpha= adhesiveness,data=E16StromavLTHSC_NA_Anchors) + scale_color_brewer(name = "RNAMagnet\nLocation",palette= "Set1") + scale_alpha_continuous(name = "RNAMagnet\nAdhesiveness") + theme_bw() + theme(panel.grid = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+E16StromavMPP2_NA_plot <- qplot(x =Embeddings(E16StromavMPP2_NA,reduction="umap")[,1], y=Embeddings(E16StromavMPP2_NA,reduction="umap")[,2], color = direction,size=I(0.75),alpha= adhesiveness,data=E16StromavMPP2_NA_Anchors) + scale_color_brewer(name = "RNAMagnet\nLocation",palette= "Set1") + scale_alpha_continuous(name = "RNAMagnet\nAdhesiveness") + theme_bw() + theme(panel.grid = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+E18StromavLTHSC_NA_plot <- qplot(x =Embeddings(E18StromavLTHSC_NA,reduction="umap")[,1], y=Embeddings(E18StromavLTHSC_NA,reduction="umap")[,2], color = direction,size=I(0.75),alpha= adhesiveness,data=E18StromavLTHSC_NA_Anchors) + scale_color_brewer(name = "RNAMagnet\nLocation",palette= "Set1") + scale_alpha_continuous(name = "RNAMagnet\nAdhesiveness") + theme_bw() + theme(panel.grid = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+E18StromavMPP2_NA_plot <- qplot(x =Embeddings(E18StromavMPP2_NA,reduction="umap")[,1], y=Embeddings(E18StromavMPP2_NA,reduction="umap")[,2], color = direction,size=I(0.75),alpha= adhesiveness,data=E18StromavMPP2_NA_Anchors) + scale_color_brewer(name = "RNAMagnet\nLocation",palette= "Set1") + scale_alpha_continuous(name = "RNAMagnet\nAdhesiveness") + theme_bw() + theme(panel.grid = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+P0StromavLTHSC_NA_plot <- qplot(x =Embeddings(P0StromavLTHSC_NA,reduction="umap")[,1], y=Embeddings(P0StromavLTHSC_NA,reduction="umap")[,2], color = direction,size=I(0.75),alpha= adhesiveness,data=P0StromavLTHSC_NA_Anchors) + scale_color_brewer(name = "RNAMagnet\nLocation",palette= "Set1") + scale_alpha_continuous(name = "RNAMagnet\nAdhesiveness") + theme_bw() + theme(panel.grid = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+P0StromavMPP2_NA_plot <- qplot(x =Embeddings(P0StromavMPP2_NA,reduction="umap")[,1], y=Embeddings(P0StromavMPP2_NA,reduction="umap")[,2], color = direction,size=I(0.75),alpha= adhesiveness,data=P0StromavMPP2_NA_Anchors) + scale_color_brewer(name = "RNAMagnet\nLocation",palette= "Set1") + scale_alpha_continuous(name = "RNAMagnet\nAdhesiveness") + theme_bw() + theme(panel.grid = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+AdultStromavLTHSC_NA_plot
+AdultStromavMPP2_NA_plot
+P0StromavLTHSC_NA_plot
+P0StromavMPP2_NA_plot
+E18StromavLTHSC_NA_plot
+E18StromavMPP2_NA_plot
+E16StromavLTHSC_NA_plot
+E16StromavMPP2_NA_plot
+save(AdultStromavLTHSC_NA_Anchors, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavLTHSC_NA_Anchors.Robj")
+save(AdultStromavMPP2_NA_Anchors, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavMPP2_NA_Anchors.Robj")
+save(P0StromavLTHSC_NA_Anchors, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavLTHSC_NA_Anchors.Robj")
+save(P0StromavMPP2_NA_Anchors, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavMPP2_NA_Anchors.Robj")
+save(E18StromavLTHSC_NA_Anchors, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavLTHSC_NA_Anchors.Robj")
+save(E18StromavMPP2_NA_Anchors, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavMPP2_NA_Anchors.Robj")
+save(E16StromavLTHSC_NA_Anchors, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavLTHSC_NA_Anchors.Robj")
+save(E16StromavMPP2_NA_Anchors, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavMPP2_NA_Anchors.Robj")
+```
+Merge annotation data with the RNAMagnetAnchors dataframe and save as an Excel spreadsheet:
+```{r}
+AdultStromavLTHSC_NA_Anchors2 <- merge(x = AdultStromavLTHSC_NA_Anchors, y = AdultStromavLTHSC_NA@meta.data, by = 'row.names')
+write.csv(AdultStromavLTHSC_NA_Anchors2,"C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetAnchors/AdultStromavLTHSC_NA_Anchors2.csv", row.names = TRUE)
+AdultStromavMPP2_NA_Anchors2 <- merge(x = AdultStromavMPP2_NA_Anchors, y = AdultStromavMPP2_NA@meta.data, by = 'row.names')
+write.csv(AdultStromavMPP2_NA_Anchors2,"C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetAnchors/AdultStromavMPP2_NA_Anchors2.csv", row.names = TRUE)
+P0StromavLTHSC_NA_Anchors2 <- merge(x = P0StromavLTHSC_NA_Anchors, y = P0StromavLTHSC_NA@meta.data, by = 'row.names')
+write.csv(P0StromavLTHSC_NA_Anchors2,"C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetAnchors/P0StromavLTHSC_NA_Anchors2.csv", row.names = TRUE)
+P0StromavMPP2_NA_Anchors2 <- merge(x = P0StromavMPP2_NA_Anchors, y = P0StromavMPP2_NA@meta.data, by = 'row.names')
+write.csv(P0StromavMPP2_NA_Anchors2,"C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetAnchors/P0StromavMPP2_NA_Anchors2.csv", row.names = TRUE)
+E18StromavLTHSC_NA_Anchors2 <- merge(x = E18StromavLTHSC_NA_Anchors, y = E18StromavLTHSC_NA@meta.data, by = 'row.names')
+write.csv(E18StromavLTHSC_NA_Anchors2,"C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetAnchors/E18StromavLTHSC_NA_Anchors2.csv", row.names = TRUE)
+E18StromavMPP2_NA_Anchors2 <- merge(x = E18StromavMPP2_NA_Anchors, y = E18StromavMPP2_NA@meta.data, by = 'row.names')
+write.csv(E18StromavMPP2_NA_Anchors2,"C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetAnchors/E18StromavMPP2_NA_Anchors2.csv", row.names = TRUE)
+E16StromavLTHSC_NA_Anchors2 <- merge(x = E16StromavLTHSC_NA_Anchors, y = E16StromavLTHSC_NA@meta.data, by = 'row.names')
+write.csv(E16StromavLTHSC_NA_Anchors2,"C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetAnchors/E16StromavLTHSC_NA_Anchors2.csv", row.names = TRUE)
+E16StromavMPP2_NA_Anchors2 <- merge(x = E16StromavMPP2_NA_Anchors, y = E16StromavMPP2_NA@meta.data, by = 'row.names')
+write.csv(E16StromavMPP2_NA_Anchors2,"C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetAnchors/E16StromavMPP2_NA_Anchors2.csv", row.names = TRUE)
+```
+2/17/21: Combine the relevant populations for each object to create new objects and perform signaling interactions to get ligand-receptor pairs and interaction scores. First, create the objects:
+```{r}
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavLTHSC.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/AdultStromavMPP2.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavLTHSC.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/P0StromavMPP2.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavLTHSC.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E18StromavMPP2.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavLTHSC.Robj")
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/E16StromavMPP2.Robj")
+AdultCARsvLTHSC <- subset(AdultStromavLTHSC, Annotation2 %in% c("LTHSC", 'CARs'))
+AdultCARsvLTHSC <- RunUMAP(AdultCARsvLTHSC, dims = 1:15)
+DimPlot(AdultCARsvLTHSC, label = TRUE, pt.size = 2)
+save(AdultCARsvLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/AdultCARsvLTHSC.Robj")
+AdultSECsvLTHSC <- subset(AdultStromavLTHSC, Annotation2 %in% c("LTHSC", 'SECs'))
+AdultSECsvLTHSC <- RunUMAP(AdultSECsvLTHSC, dims = 1:15)
+DimPlot(AdultSECsvLTHSC, label = TRUE, pt.size = 2)
+save(AdultSECsvLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/AdultSECsvLTHSC.Robj")
+AdultF8vLTHSC <- subset(AdultStromavLTHSC, Annotation2 %in% c("LTHSC", 'F-1'))
+AdultF8vLTHSC <- RunUMAP(AdultF8vLTHSC, dims = 1:15)
+DimPlot(AdultF8vLTHSC, label = TRUE, pt.size = 2)
+save(AdultF8vLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/AdultF8vLTHSC.Robj")
+AdultSECsvMPP2 <- subset(AdultStromavMPP2, Annotation3 %in% c("MPP2", 'SECs'))
+AdultSECsvMPP2 <- RunUMAP(AdultSECsvMPP2, dims = 1:15)
+DimPlot(AdultSECsvMPP2, label = TRUE, pt.size = 2)
+save(AdultSECsvMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/AdultSECsvMPP2.Robj")
+AdultF8vMPP2 <- subset(AdultStromavMPP2, Annotation3 %in% c("MPP2", 'F-1'))
+AdultF8vMPP2 <- RunUMAP(AdultF8vMPP2, dims = 1:15)
+DimPlot(AdultF8vMPP2, label = TRUE, pt.size = 2)
+save(AdultF8vMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/AdultF8vMPP2.Robj")
+AdultF11vMPP2 <- subset(AdultStromavMPP2, Annotation3 %in% c("MPP2", 'F-4'))
+AdultF11vMPP2 <- RunUMAP(AdultF11vMPP2, dims = 1:15)
+DimPlot(AdultF11vMPP2, label = TRUE, pt.size = 2)
+save(AdultF11vMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/AdultF11vMPP2.Robj")
+P0UD4vMPP2 <- subset(P0StromavMPP2, Annotation3 %in% c("MPP2", 'UD-3'))
+P0UD4vMPP2 <- RunUMAP(P0UD4vMPP2, dims = 1:15)
+DimPlot(P0UD4vMPP2, label = TRUE, pt.size = 2)
+save(P0UD4vMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/P0UD4vMPP2.Robj")
+P0ECsvMPP2 <- subset(P0StromavMPP2, Annotation3 %in% c("MPP2", 'ECs'))
+P0ECsvMPP2 <- RunUMAP(P0ECsvMPP2, dims = 1:15)
+DimPlot(P0ECsvMPP2, label = TRUE, pt.size = 2)
+save(P0ECsvMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/P0ECsvMPP2.Robj")
+P0F5vMPP2 <- subset(P0StromavMPP2, Annotation3 %in% c("MPP2", 'F-4'))
+P0F5vMPP2 <- RunUMAP(P0F5vMPP2, dims = 1:15)
+DimPlot(P0F5vMPP2, label = TRUE, pt.size = 2)
+save(P0F5vMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/P0F5vMPP2.Robj")
+P0UD4vLTHSC <- subset(P0StromavLTHSC, Annotation2 %in% c("LTHSC", 'UD-3'))
+P0UD4vLTHSC <- RunUMAP(P0UD4vLTHSC, dims = 1:15)
+DimPlot(P0UD4vLTHSC, label = TRUE, pt.size = 2)
+save(P0UD4vLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/P0UD4vLTHSC.Robj")
+P0ECsvLTHSC <- subset(P0StromavLTHSC, Annotation3 %in% c("LTHSC", 'ECs'))
+P0ECsvLTHSC <- RunUMAP(P0ECsvLTHSC, dims = 1:15)
+DimPlot(P0ECsvLTHSC, label = TRUE, pt.size = 2)
+save(P0ECsvLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/P0ECsvLTHSC.Robj")
+P0P3vLTHSC <- subset(P0StromavLTHSC, Annotation2 %in% c("LTHSC", 'P-1'))
+P0P3vLTHSC <- RunUMAP(P0P3vLTHSC, dims = 1:15)
+DimPlot(P0P3vLTHSC, label = TRUE, pt.size = 2)
+save(P0P3vLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/P0P3vLTHSC.Robj")
+E18F3iivLTHSC <- subset(E18StromavLTHSC, Annotation2 %in% c("LTHSC", 'F-2'))
+E18F3iivLTHSC <- RunUMAP(E18F3iivLTHSC, dims = 1:15)
+DimPlot(E18F3iivLTHSC, label = TRUE, pt.size = 2)
+save(E18F3iivLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E18F3iivLTHSC.Robj")
+E18ECsvLTHSC <- subset(E18StromavLTHSC, Annotation2 %in% c("LTHSC", 'ECs'))
+E18ECsvLTHSC <- RunUMAP(E18ECsvLTHSC, dims = 1:15)
+DimPlot(E18ECsvLTHSC, label = TRUE, pt.size = 2)
+save(E18ECsvLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E18ECsvLTHSC.Robj")
+E18P2vLTHSC <- subset(E18StromavLTHSC, Annotation2 %in% c("LTHSC", 'P-2'))
+E18P2vLTHSC <- RunUMAP(E18P2vLTHSC, dims = 1:15)
+DimPlot(E18P2vLTHSC, label = TRUE, pt.size = 2)
+save(E18P2vLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E18P2vLTHSC.Robj")
+E18F3iivMPP2 <- subset(E18StromavMPP2, Annotation3 %in% c("MPP2", 'F-2'))
+E18F3iivMPP2 <- RunUMAP(E18F3iivMPP2, dims = 1:15)
+DimPlot(E18F3iivMPP2, label = TRUE, pt.size = 2)
+save(E18F3iivMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E18F3iivMPP2.Robj")
+E18ECsvMPP2 <- subset(E18StromavMPP2, Annotation3 %in% c("MPP2", 'ECs'))
+E18ECsvMPP2 <- RunUMAP(E18ECsvMPP2, dims = 1:15)
+DimPlot(E18ECsvMPP2, label = TRUE, pt.size = 2)
+save(E18ECsvMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E18ECsvMPP2.Robj")
+E18F3ivMPP2 <- subset(E18StromavMPP2, Annotation3 %in% c("MPP2", 'F-1'))
+E18F3ivMPP2 <- RunUMAP(E18F3ivMPP2, dims = 1:15)
+DimPlot(E18F3ivMPP2, label = TRUE, pt.size = 2)
+save(E18F3ivMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E18F3ivMPP2.Robj")
+E16F2vMPP2 <- subset(E16StromavMPP2, Annotation3 %in% c("MPP2", 'F-2'))
+E16F2vMPP2 <- RunUMAP(E16F2vMPP2, dims = 1:15)
+DimPlot(E16F2vMPP2, label = TRUE, pt.size = 2)
+save(E16F2vMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E16F2vMPP2.Robj")
+E16ECsvMPP2 <- subset(E16StromavMPP2, Annotation3 %in% c("MPP2", 'ECs'))
+E16ECsvMPP2 <- RunUMAP(E16ECsvMPP2, dims = 1:15)
+DimPlot(E16ECsvMPP2, label = TRUE, pt.size = 2)
+save(E16ECsvMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E16ECsvMPP2.Robj")
+E16F4vMPP2 <- subset(E16StromavMPP2, Annotation3 %in% c("MPP2", 'F-4'))
+E16F4vMPP2 <- RunUMAP(E16F4vMPP2, dims = 1:15)
+DimPlot(E16F4vMPP2, label = TRUE, pt.size = 2)
+save(E16F4vMPP2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E16F4vMPP2.Robj")
+E16F3vLTHSC <- subset(E16StromavLTHSC, Annotation2 %in% c("LTHSC", 'F-3'))
+E16F3vLTHSC <- RunUMAP(E16F3vLTHSC, dims = 1:15)
+DimPlot(E16F3vLTHSC, label = TRUE, pt.size = 2)
+save(E16F3vLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E16F3vLTHSC.Robj")
+E16ECsvLTHSC <- subset(E16StromavLTHSC, Annotation2 %in% c("LTHSC", 'ECs'))
+E16ECsvLTHSC <- RunUMAP(E16ECsvLTHSC, dims = 1:15)
+DimPlot(E16ECsvLTHSC, label = TRUE, pt.size = 2)
+save(E16ECsvLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E16ECsvLTHSC.Robj")
+E16F4vLTHSC <- subset(E16StromavLTHSC, Annotation2 %in% c("LTHSC", 'F-4'))
+E16F4vLTHSC <- RunUMAP(E16F4vLTHSC, dims = 1:15)
+DimPlot(E16F4vLTHSC, label = TRUE, pt.size = 2)
+save(E16F4vLTHSC, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/E16F4vLTHSC.Robj")
+
+```
+Now, perform the signaling interactions:
+```{r}
+library(ggplot2)
+library(Rmagic)
+library(RNAMagnet)
+###For the following, the first cluster is always the ligand and the second cluster is always the receptor###
+AdultCARsvLTHSC_Pairs <- RNAMagnetSignaling(AdultCARsvLTHSC, .version = "1.0.0")
+save(AdultCARsvLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/AdultCARsvLTHSC_Pairs.Robj")
+AdultCARsvLTHSC_List <- getRNAMagnetGenes(AdultCARsvLTHSC_Pairs, "CARs", "LTHSCs", thresh = 0)
+write.csv(AdultCARsvLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/AdultCARsvLTHSC_List.csv")
+AdultSECsvLTHSC_Pairs <- RNAMagnetSignaling(AdultSECsvLTHSC, .version = "1.0.0")
+save(AdultSECsvLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/AdultSECsvLTHSC_Pairs.Robj")
+AdultSECsvLTHSC_List <- getRNAMagnetGenes(AdultSECsvLTHSC_Pairs, "SECs", "LTHSCs", thresh = 0)
+write.csv(AdultSECsvLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/AdultSECsvLTHSC_List.csv")
+AdultF8vLTHSC_Pairs <- RNAMagnetSignaling(AdultF8vLTHSC, .version = "1.0.0")
+save(AdultF8vLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/AdultF8vLTHSC_Pairs.Robj")
+AdultF8vLTHSC_List <- getRNAMagnetGenes(AdultF8vLTHSC_Pairs, "F8", "LTHSCs", thresh = 0)
+write.csv(AdultF8vLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/AdultF8vLTHSC_List.csv")
+AdultF11vMPP2_Pairs <- RNAMagnetSignaling(AdultF11vMPP2, .version = "1.0.0")
+save(AdultF11vMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/AdultF11vMPP2_Pairs.Robj")
+AdultF11vMPP2_List <- getRNAMagnetGenes(AdultF11vMPP2_Pairs, "F11", "MPP2s", thresh = 0)
+write.csv(AdultF11vMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/AdultF11vMPP2_List.csv")
+AdultSECsvMPP2_Pairs <- RNAMagnetSignaling(AdultSECsvMPP2, .version = "1.0.0")
+save(AdultSECsvMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/AdultSECsvMPP2_Pairs.Robj")
+AdultSECsvMPP2_List <- getRNAMagnetGenes(AdultSECsvMPP2_Pairs, "SECs", "MPP2s", thresh = 0)
+write.csv(AdultSECsvMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/AdultSECsvMPP2_List.csv")
+AdultF8vMPP2_Pairs <- RNAMagnetSignaling(AdultF8vMPP2, .version = "1.0.0")
+save(AdultF8vMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/AdultF8vMPP2_Pairs.Robj")
+AdultF8vMPP2_List <- getRNAMagnetGenes(AdultF8vMPP2_Pairs, "F8", "MPP2s", thresh = 0)
+write.csv(AdultF8vMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/AdultF8vMPP2_List.csv")
+P0UD4vLTHSC_Pairs <- RNAMagnetSignaling(P0UD4vLTHSC, .version = "1.0.0")
+save(P0UD4vLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/P0UD4vLTHSC_Pairs.Robj")
+P0UD4vLTHSC_List <- getRNAMagnetGenes(P0UD4vLTHSC_Pairs, "UD4", "LTHSCs", thresh = 0)
+write.csv(P0UD4vLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/P0UD4vLTHSC_List.csv")
+P0ECsvLTHSC_Pairs <- RNAMagnetSignaling(P0ECsvLTHSC, .version = "1.0.0")
+save(P0ECsvLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/P0ECsvLTHSC_Pairs.Robj")
+P0ECsvLTHSC_List <- getRNAMagnetGenes(P0ECsvLTHSC_Pairs, "ECs", "LTHSCs", thresh = 0)
+write.csv(P0ECsvLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/P0ECsvLTHSC_List.csv")
+P0P3vLTHSC_Pairs <- RNAMagnetSignaling(P0P3vLTHSC, .version = "1.0.0")
+save(P0P3vLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/P0P3vLTHSC_Pairs.Robj")
+P0P3vLTHSC_List <- getRNAMagnetGenes(P0P3vLTHSC_Pairs, "P3", "LTHSCs", thresh = 0)
+write.csv(P0P3vLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/P0P3vLTHSC_List.csv")
+P0UD4vMPP2_Pairs <- RNAMagnetSignaling(P0UD4vMPP2, .version = "1.0.0")
+save(P0UD4vMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/P0UD4vMPP2_Pairs.Robj")
+P0UD4vMPP2_List <- getRNAMagnetGenes(P0UD4vMPP2_Pairs, "UD4", "MPP2s", thresh = 0)
+write.csv(P0UD4vMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/P0UD4vMPP2_List.csv")
+P0ECsvMPP2_Pairs <- RNAMagnetSignaling(P0ECsvMPP2, .version = "1.0.0")
+save(P0ECsvMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/P0ECsvMPP2_Pairs.Robj")
+P0ECsvMPP2_List <- getRNAMagnetGenes(P0ECsvMPP2_Pairs, "ECs", "MPP2s", thresh = 0)
+write.csv(P0ECsvMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/P0ECsvMPP2_List.csv")
+P0F5vMPP2_Pairs <- RNAMagnetSignaling(P0F5vMPP2, .version = "1.0.0")
+save(P0F5vMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/P0F5vMPP2_Pairs.Robj")
+P0F5vMPP2_List <- getRNAMagnetGenes(P0F5vMPP2_Pairs, "F5", "MPP2s", thresh = 0)
+write.csv(P0F5vMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/P0F5vMPP2_List.csv")
+E18F3iivLTHSC_Pairs <- RNAMagnetSignaling(E18F3iivLTHSC, .version = "1.0.0")
+save(E18F3iivLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E18F3iivLTHSC_Pairs.Robj")
+E18F3iivLTHSC_List <- getRNAMagnetGenes(E18F3iivLTHSC_Pairs, "F3ii", "LTHSCs", thresh = 0)
+write.csv(E18F3iivLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E18F3iivLTHSC_List.csv")
+E18ECsvLTHSC_Pairs <- RNAMagnetSignaling(E18ECsvLTHSC, .version = "1.0.0")
+save(E18ECsvLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E18ECsvLTHSC_Pairs.Robj")
+E18ECsvLTHSC_List <- getRNAMagnetGenes(E18ECsvLTHSC_Pairs, "ECs", "LTHSCs", thresh = 0)
+write.csv(E18ECsvLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E18ECsvLTHSC_List.csv")
+E18P2vLTHSC_Pairs <- RNAMagnetSignaling(E18P2vLTHSC, .version = "1.0.0")
+save(E18P2vLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E18P2vLTHSC_Pairs.Robj")
+E18P2vLTHSC_List <- getRNAMagnetGenes(E18P2vLTHSC_Pairs, "P2", "LTHSCs", thresh = 0)
+write.csv(E18P2vLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E18P2vLTHSC_List.csv")
+E18F3iivMPP2_Pairs <- RNAMagnetSignaling(E18F3iivMPP2, .version = "1.0.0")
+save(E18F3iivMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E18F3iivMPP2_Pairs.Robj")
+E18F3iivMPP2_List <- getRNAMagnetGenes(E18F3iivMPP2_Pairs, "F3ii", "MPP2s", thresh = 0)
+write.csv(E18F3iivMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E18F3iivMPP2_List.csv")
+E18ECsvMPP2_Pairs <- RNAMagnetSignaling(E18ECsvMPP2, .version = "1.0.0")
+save(E18ECsvMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E18ECsvMPP2_Pairs.Robj")
+E18ECsvMPP2_List <- getRNAMagnetGenes(E18ECsvMPP2_Pairs, "ECs", "MPP2s", thresh = 0)
+write.csv(E18ECsvMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E18ECsvMPP2_List.csv")
+E18F3ivMPP2_Pairs <- RNAMagnetSignaling(E18F3ivMPP2, .version = "1.0.0")
+save(E18F3ivMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E18F3ivMPP2_Pairs.Robj")
+E18F3ivMPP2_List <- getRNAMagnetGenes(E18F3ivMPP2_Pairs, "F3i", "MPP2s", thresh = 0)
+write.csv(E18F3ivMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E18F3ivMPP2_List.csv")
+E16F4vLTHSC_Pairs <- RNAMagnetSignaling(E16F4vLTHSC, .version = "1.0.0")
+save(E16F4vLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E16F4vLTHSC_Pairs.Robj")
+E16F4vLTHSC_List <- getRNAMagnetGenes(E16F4vLTHSC_Pairs, "F4", "LTHSCs", thresh = 0)
+write.csv(E16F4vLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E16F4vLTHSC_List.csv")
+E16ECsvLTHSC_Pairs <- RNAMagnetSignaling(E16ECsvLTHSC, .version = "1.0.0")
+save(E16ECsvLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E16ECsvLTHSC_Pairs.Robj")
+E16ECsvLTHSC_List <- getRNAMagnetGenes(E16ECsvLTHSC_Pairs, "ECs", "LTHSCs", thresh = 0)
+write.csv(E16ECsvLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E16ECsvLTHSC_List.csv")
+E16F3vLTHSC_Pairs <- RNAMagnetSignaling(E16F3vLTHSC, .version = "1.0.0")
+save(E16F3vLTHSC_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E16F3vLTHSC_Pairs.Robj")
+E16F3vLTHSC_List <- getRNAMagnetGenes(E16F3vLTHSC_Pairs, "F3", "LTHSCs", thresh = 0)
+write.csv(E16F3vLTHSC_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E16F3vLTHSC_List.csv")
+E16F4vMPP2_Pairs <- RNAMagnetSignaling(E16F4vMPP2, .version = "1.0.0")
+save(E16F4vMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E16F4vMPP2_Pairs.Robj")
+E16F4vMPP2_List <- getRNAMagnetGenes(E16F4vMPP2_Pairs, "F4", "MPP2s", thresh = 0)
+write.csv(E16F4vMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E16F4vMPP2_List.csv")
+E16ECsvMPP2_Pairs <- RNAMagnetSignaling(E16ECsvMPP2, .version = "1.0.0")
+save(E16ECsvMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E16ECsvMPP2_Pairs.Robj")
+E16ECsvMPP2_List <- getRNAMagnetGenes(E16ECsvMPP2_Pairs, "ECs", "MPP2s", thresh = 0)
+write.csv(E16ECsvMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E16ECsvMPP2_List.csv")
+E16F2vMPP2_Pairs <- RNAMagnetSignaling(E16F2vMPP2, .version = "1.0.0")
+save(E16F2vMPP2_Pairs, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/E16F2vMPP2_Pairs.Robj")
+E16F2vMPP2_List <- getRNAMagnetGenes(E16F2vMPP2_Pairs, "F2", "MPP2s", thresh = 0)
+write.csv(E16F2vMPP2_List, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/E16F2vMPP2_List.csv")
+```
+After finding the top 20% of ligand-receptor pairs for each comparison, I compiled a list of them all and their interaction scores for every comparison at each timepoint. This list can be imported to R and converted into a heatmap. It is critical that when importing the data from Excel, all but the first column (the column indicating the ligands-receptor pairs) are converted to Numeric from the drop down menu on the import window (the drop down window can be found in the cells containing the column names). It is also critical that each column is named.
+```{r}
+library(readxl)
+LTHSC_Ligand_Receptor_Interaction_Scores_Matrix <- read_excel("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/LTHSC Ligand-Receptor Interaction Scores Matrix.xlsx", 
++     col_types = c("text", "numeric", "numeric", 
++         "numeric", "numeric", "numeric", 
++         "numeric", "numeric", "numeric", 
++         "numeric", "numeric", "numeric", 
++         "numeric"))
+View(LTHSC_Ligand_Receptor_Interaction_Scores_Matrix)
+LTHSC_LR <- as.matrix(LTHSC_Ligand_Receptor_Interaction_Scores_Matrix[, -1])
+rownames(LTHSC_LR) <- LTHSC_Ligand_Receptor_Interaction_Scores_Matrix$Pair
+heatmap(LTHSC_LR)
+```
+This produces the default R heatmap (i.e. the matrix is not normalized, it provides a dendogram that reorders the columns and rows instead of a visualization of the raw matrix), but it can be toggled:
+```{r}
+###Depending on where the variation needs to be absorbed:
+heatmap(LTHSC_LR, scale = 'column')
+heatmap(LTHSC_LR, scale = 'row')
+###Removing dendogram and showing raw matrix:
+heatmap(LTHSC_LR, Colv = NA, Rowv = NA)
+```
+Creating a heatmap in ggplot2 may be better:
+```{r}
+library(ggplot2)
+library(reshape2)
+melt_LTHSC_LR <- melt(LTHSC_Ligand_Receptor_Interaction_Scores_Matrix)
+head(melt_LTHSC_LR)
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "red")
+##This automatically places the factor "Pair" levels in descending alphabetical order. To change them to the desired order, you have to manually input the values:
+melt_LTHSC_LR$Pair <- factor(melt_LTHSC_LR$Pair, levels = c('Vegfc-Kdr','Il15-Il2rg','Apoe-Lrp8','Kng2-Cd93','Inhba-Acvr2b','Hbegf-Cd44','Inhba-Eng','Igf2-Igf1r','Tgfb3-Tgfbr3','Tgfb2-Tgfbr3','Tgfb2-Tgfbr2','Tfpi-Vldlr','Angpt2-Tie1','Bmp7-Eng','Bmp2-Acvr2b','Bmp2-Eng','Kitl-Kit','Tgfb3-Eng','Tgfb2-Eng','Penk-Ogfr','Wnt5a-Lrp5','Igf1-Insr','Igf2-Insr','Mfap2-Notch1','Ctgf-Lrp6','Pdgfb-Pdgfrb','Igfbp4-Lrp6','Tgfb3-Tgfbr2','Mdk-Itgb2','Wnt5a-Lrp6','Cxcl12-Cxcr4','App&Bace1-Tnfrsf21','Tgfb3-Tgfbr1'))
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "red")
+##Can also play around with the colors and layout of the heatmap:
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+     geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "blue")
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "darkblue", high = "red")
+##To use a color brewer palette:
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_distiller(palette = "Spectral")
+##To use the viridis palette:
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_viridis(discrete = FALSE)
+##Going to go with the R colors, white --> red; That seems to be the best representation##
+```
+Do the same for the MPP2 ligand-receptor pairs:
+```{r}
+MPP2_Ligand_Receptor_Interaction_Scores_Matrix <- read_excel("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/MPP2 Ligand-Receptor Interaction Scores Matrix.xlsx", 
++     col_types = c("text", "numeric", "numeric", 
++         "numeric", "numeric", "numeric", 
++         "numeric", "numeric", "numeric", 
++         "numeric", "numeric", "numeric", 
++         "numeric"))
+View(MPP2_Ligand_Receptor_Interaction_Scores_Matrix)
+MPP2_LR <- as.matrix(MPP2_Ligand_Receptor_Interaction_Scores_Matrix[, -1])
+rownames(MPP2_LR) <- MPP2_Ligand_Receptor_Interaction_Scores_Matrix$Pair
+heatmap(MPP2_LR)
+melt_MPP2_LR <- melt(MPP2_Ligand_Receptor_Interaction_Scores_Matrix)
+head(melt_MPP2_LR)
+ggplot(melt_MPP2_LR, aes(variable, Pair))
++     geom_tile(aes(fill = value), colour = "white")
++     scale_fill_gradient(low = "white", high = "red")
+melt_MPP2_LR$Pair <- factor(melt_MPP2_LR$Pair, levels = c('Il15-Il2rg','Igf1-Insr','Igf1-Igf1r','Igf2-Igf1r','Inhba-Eng','Bmp2-Eng','Tgfb3-Eng','Tgfb2-Eng','Igf2-Insr','Cxcl12-Cxcr4','Kitl-Kit','Penk-Ogfr','Inhba-Acvr2b','Bmp4-Bmpr2','Mfap2-Notch1','Sema3c-Plxnd1','Hbegf-Cd44','Ctgf-Lrp6','Igfbp4-Lrp6','Mdk-Itgb2','Tgfb3-Tgfbr2','App&Bace1-Tnfrsf21'))
+ggplot(melt_MPP2_LR, aes(variable, Pair))
++     geom_tile(aes(fill = value), colour = "white")
++     scale_fill_gradient(low = "white", high = "red")
+```
+Need to repeat the RNAMagnetSignaling analyses to do Hyunjin's permutations and include p-values for the ligand-receptor pairs. Here is an example of how it is done:
+```{r}
+target_col <- "Annotation2"
+
+ 
+
+### run RNAMagnet signaling
+    AdultCARsvLTHSC<- SetIdent(object = AdultCARsvLTHSC,
+                              cells = rownames(AdultCARsvLTHSC@meta.data),
+                              value = AdultCARsvLTHSC@meta.data[,target_col])
+    AdultCARsvLTHSC_Pairs <- RNAMagnetSignaling(AdultCARsvLTHSC)
+    
+    
+    ### permutation p-value
+    iteration_num <- 10
+    set.seed(2990)
+    random_value_list <- NULL
+    unique_anchors <- unique(AdultCARsvLTHSC@meta.data[,target_col])
+    unique_anchor_nums <- sapply(unique_anchors, function(x) length(which(AdultCARsvLTHSC@meta.data[,target_col] == x)))
+    for(i in 1:iteration_num) {
+      
+      ### set random anchors similar to the original
+      random_anchors <- rep("", sum(unique_anchor_nums))
+      for(anchor in unique_anchors) {
+        random_anchors[sample(which(random_anchors == ""), unique_anchor_nums[anchor])] <- anchor
+      }
+      
+      ### run RNAMagnet signaling with random anchors
+      AdultCARsvLTHSC <- SetIdent(object = AdultCARsvLTHSC,
+                                cells = rownames(AdultCARsvLTHSC@meta.data),
+                                value = random_anchors)
+      random_result <- RNAMagnetSignaling(AdultCARsvLTHSC)
+      
+      ### get all the interaction list
+      temp_list <- NULL
+      for(clust1 in unique(AdultCARsvLTHSC@meta.data[,target_col])) {
+        for(clust2 in unique(AdultCARsvLTHSC@meta.data[,target_col])) {
+          il <- getRNAMagnetGenes(AdultCARsvLTHSC_Pairs, clust1, clust2, thresh = 0)
+          if(nrow(il) > 0) {
+            il$ligand_cluster <- clust1
+            il$receptor_cluster <- clust2
+            if(is.null(temp_list)) {
+              temp_list <- il
+            } else {
+              temp_list <- rbind(temp_list, il)
+            }
+          }
+        }
+      }
+      temp_list <- cbind(temp_list[3:4], temp_list[1:2])
+      colnames(temp_list) <- c("Ligand_Cluster", "Receptor_Cluster", "Interaction_Score", "Interaction_Pair")
+      
+      if(is.null(random_value_list)) {
+        random_value_list <- temp_list
+      } else {
+        random_value_list <- rbind(random_value_list, temp_list)
+      }
+      
+    }
+    random_value_list <- random_value_list$Interaction_Score
+    random_value_list <- random_value_list[order(-random_value_list)]
+```
+This will generate a list of the ligand-receptor pairs, interaction score, and p-value for each ligand-receptor pair. To write this to an Excel file, use the following code:
+
+```{r}
+### get all the interaction list
+    interaction_list <- NULL
+    for(clust1 in unique(AdultCARsvLTHSC@meta.data[,target_col])) {
+      for(clust2 in unique(AdultCARsvLTHSC@meta.data[,target_col])) {
+        il <- getRNAMagnetGenes(AdultCARsvLTHSC_Pairs, clust1, clust2, thresh = 0)
+        if(nrow(il) > 0) {
+          il$ligand_cluster <- clust1
+          il$receptor_cluster <- clust2
+          if(is.null(interaction_list)) {
+            interaction_list <- il
+          } else {
+            interaction_list <- rbind(interaction_list, il)
+          }
+        }
+      }
+    }
+    interaction_list <- cbind(interaction_list[3:4], interaction_list[1:2])
+    colnames(interaction_list) <- c("Ligand_Cluster", "Receptor_Cluster", "Interaction_Score", "Interaction_Pair")
+    
+
+ 
+
+
+    ### give permutation p-value
+    interaction_list$Score_P_Val <- NA
+    for(i in 1:nrow(interaction_list)) {
+      interaction_list$Score_P_Val[i] <- round(length(which(random_value_list >= interaction_list$Interaction_Score[i]))/length(random_value_list),
+                                               digits = 5)
+    }
+    
+    ### change the order of the column in the list
+    interaction_list <- interaction_list[,c("Ligand_Cluster", "Receptor_Cluster", "Interaction_Score", "Score_P_Val", "Interaction_Pair")]
+write.csv(interaction_list, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/RNAMagnetSignaling/LigandReceptorPairs/Lists/interaction_list.csv")
+```
+You will need to change the Objects and what you save the list as each time, but you should not need to change any other part of the code!
+
+##NEW##
+Hyunjin has repeated the RNAMagnetAnchors() function for all of these comparisons, but imputed a p-value for significant specificity scores (i.e., using the specificity score for stroma cell x vs LTHSCs or MPP2s at each timepoint and determining if it is significant or not.). He has generated objects in which the significant specificity score is included in the meta.data for each object, so we can subset cells based on if they show a significant specificity score toward LTHSCs/MPP2s. Let's subset these cell types and create new objects. Each object will include 1.) LTHSCs/MPP2s and 2.) Stromal cells (irrespective of subtype (e.g. CARs, AECs, etc.)):
+```{r}
+AdultStromavLTHSC <- readRDS("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/AdultStromavLTHSC_NA.RDS")
+AdultStromavMPP2 <- readRDS("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/AdultStromavMPP2_NA.RDS")
+E16StromavLTHSC <- readRDS("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/E16StromavLTHSC_NA.RDS")
+E16StromavMPP2 <- readRDS("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/E16StromavMPP2_NA.RDS")
+E18StromavLTHSC <- readRDS("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/E18StromavLTHSC_NA.RDS")
+E18StromavMPP2 <- readRDS("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/E18StromavMPP2_NA.RDS")
+P0StromavLTHSC <- readRDS("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/P0StromavLTHSC_NA.RDS")
+P0StromavMPP2 <- readRDS("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/P0StromavMPP2_NA.RDS")
+
+```
+Create an object that just contains the stroma? By reclustering we may be able to see if there are similarities between putative niche cells? Start with the Adult LTHSC niche:
+```{r}
+target_cells <- subset(AdultStromavLTHSC, Specificity_Significance %in% c("Significant"))
+target_cells <- subset(target_cells, direction %in% c("LTHSC"))
+target_cells <- subset(target_cells, HSPC %in% c("Stroma"))
+target_cells
+DimPlot(target_cells)
+DefaultAssay(target_cells) <- "RNA"
+target_cells <- FindVariableFeatures(object = target_cells, selection.method = 'vst')
+length(x = VariableFeatures(object = target_cells))
+VariableFeaturePlot(object = target_cells)
+target_cells@assays$RNA@var.features <- target_cells@assays$RNA@var.features[!(target_cells@assays$RNA@var.features %in% markers.remove)]
+Adult_LTHSC_Niche <- ScaleData(object = target_cells, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+Adult_LTHSC_Niche <- ScaleData(Adult_LTHSC_Niche, assay = "ADT")
+Adult_LTHSC_Niche <- RunPCA(object = Adult_LTHSC_Niche, features = VariableFeatures(object = Adult_LTHSC_Niche), npcs = 100, verbose = FALSE)
+ElbowPlot(object = Adult_LTHSC_Niche, ndims = 100)
+```
+Stop and determine the number of dims based on the elbow plot
+
+```{r}
+Ndims_Adult_LTHSC_Niche <- 15
+Adult_LTHSC_Niche <- RunTSNE(object = Adult_LTHSC_Niche, dims = 1:Ndims_Adult_LTHSC_Niche)
+Adult_LTHSC_Niche <- FindNeighbors(object = Adult_LTHSC_Niche, dims = 1:Ndims_Adult_LTHSC_Niche, force.recalc = TRUE, verbose = TRUE)
+Adult_LTHSC_Niche <- FindClusters(object = Adult_LTHSC_Niche)
+Adult_LTHSC_Niche <- RunUMAP(Adult_LTHSC_Niche, dims = 1:Ndims_Adult_LTHSC_Niche, verbose = TRUE)
+save(Adult_LTHSC_Niche, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Putative Niche Objects/Adult_LTHSC_Niche.Robj")
+```
+```
+This gives you just the stroma. Now, take the original object that Hyunjin created and subset on the LTHSCs/MPP2s AND the stroma with significant specificity toward LTHSCs/MPP2s, followed by reclustering:
+```{r}
+target_indicies <- union(union(intersect(which(AdultStromavLTHSC@meta.data$direction == "LTHSC"), which(AdultStromavLTHSC@meta.data$Specificity_Significance == "Significant")),
+intersect(which(AdultStromavLTHSC@meta.data$direction == "LTHSC"),
+which(AdultStromavLTHSC@meta.data$Annotation2 == "LTHSC"))),
+intersect(which(AdultStromavLTHSC@meta.data$direction == "Stroma"),
+which(AdultStromavLTHSC@meta.data$Annotation2 == "LTHSC")))
+target_cells <- rownames(AdultStromavLTHSC@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity <- subset(AdultStromavLTHSC, cells = target_cells)
+```
+Now, recluster:
+```{r}
+DefaultAssay(AdultStromavLTHSC_Sig_Specificity) <- "RNA"
+AdultStromavLTHSC_Sig_Specificity <- FindVariableFeatures(object = AdultStromavLTHSC_Sig_Specificity, selection.method = 'vst')
+length(x = VariableFeatures(object = AdultStromavLTHSC_Sig_Specificity))
+VariableFeaturePlot(object = AdultStromavLTHSC_Sig_Specificity)
+AdultStromavLTHSC_Sig_Specificity@assays$RNA@var.features <- AdultStromavLTHSC_Sig_Specificity@assays$RNA@var.features[!(AdultStromavLTHSC_Sig_Specificity@assays$RNA@var.features %in% markers.remove)]
+AdultStromavLTHSC_Sig_Specificity <- ScaleData(object = AdultStromavLTHSC_Sig_Specificity, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+AdultStromavLTHSC_Sig_Specificity <- ScaleData(AdultStromavLTHSC_Sig_Specificity, assay = "ADT")
+AdultStromavLTHSC_Sig_Specificity <- RunPCA(object = AdultStromavLTHSC_Sig_Specificity, features = VariableFeatures(object = AdultStromavLTHSC_Sig_Specificity), npcs = 100, verbose = FALSE)
+ElbowPlot(object = AdultStromavLTHSC_Sig_Specificity, ndims = 100)
+
+```
+Stop and determine number of dims based on the Elbow plot:
+```{r}
+Ndims_AdultStromavLTHSC_Sig_Specificity <- 21
+AdultStromavLTHSC_Sig_Specificity <- RunTSNE(object = AdultStromavLTHSC_Sig_Specificity, dims = 1:Ndims_AdultStromavLTHSC_Sig_Specificity)
+AdultStromavLTHSC_Sig_Specificity <- FindNeighbors(object = AdultStromavLTHSC_Sig_Specificity, dims = 1:Ndims_AdultStromavLTHSC_Sig_Specificity, force.recalc = TRUE, verbose = TRUE)
+AdultStromavLTHSC_Sig_Specificity <- FindClusters(object = AdultStromavLTHSC_Sig_Specificity)
+AdultStromavLTHSC_Sig_Specificity <- RunUMAP(AdultStromavLTHSC_Sig_Specificity, dims = 1:Ndims_AdultStromavLTHSC_Sig_Specificity, verbose = TRUE)
+save(AdultStromavLTHSC_Sig_Specificity, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity.Robj")
+
+```
+Now you have a new object. Now for each object object, run RNA-Magnet signaling first on the LTHSC vs entire stroma to see ligand-receptor pairs driving the interactions between LTSHCs/MPP2s and the stromal cells with significant specificity to LTHSCs. Be sure to use Hyunjin's updated RNASignaling code that imputes a p-value:
+```{r}
+library(RNAMagnet)
+library(RMagic)
+```
+Prior to running RNAMagnetSignaling(), run this to ensure RNAMagnet will worK:
+```{r}
+RNAMagnetBase <- function(seurat, anchors=NULL,neighborhood.distance=NULL, neighborhood.gradient =NULL, .k = 10, .x0 = 0.5, .minExpression,.minMolecules=1, .version = "1.0.0", .cellularCompartment, .manualAnnotation = "Correct", .symmetric = F) {
+    cat("Setting everything up...\n")
+   
+    if (grepl("^3", Biobase::package.version("Seurat")) || grepl("^4", Biobase::package.version("Seurat"))) {
+      seurat.ident <- Idents(seurat)
+      seurat.cell.names <- colnames(seurat)
+      seurat.pca <- Embeddings(seurat, reduction = "pca")
+      seurat.raw.data <- GetAssayData(seurat, slot = "counts")
+     
+    } else {
+      seurat.ident <- seurat@ident
+      seurat.cell.names <- seurat@cell.names
+      seurat.pca <- seurat@dr$pca@cell.embeddings
+      seurat.raw.data <- seurat@raw.data
+    }
+   
+    if (is.null(anchors)) anchors <- as.character(unique(seurat.ident))
+   
+    out <- new("rnamagnet", celltype = seurat.ident, params = list("neighborhood.distance"=neighborhood.distance, "neighborhood.gradient" =neighborhood.gradient, ".k" = .k, ".x0" = .x0, ".minExpression" = .minExpression, ".minMolecules" = .minMolecules, ".cellularCompartment" = .cellularCompartment, ".manualAnnotation" = .manualAnnotation, ".symmetric" = .symmetric))
+   
+    #compute cell-cell similarity
+    similarity <- as.matrix(1-cor(t(seurat.pca[,1:15])))
+   
+    #prepare database
+    ligrec <- getLigandsReceptors(.version, .cellularCompartment, .manualAnnotation)
+    if (.symmetric) ligrec <- makeSymmetric(ligrec) #for physical interactions: i a binds b, b binds a.
+   
+   
+    #prepare genes included into MAGIC
+    filteredGenes <- rownames(seurat.raw.data)[apply(seurat.raw.data[,seurat.cell.names] >=.minMolecules ,1,sum) > .minExpression]
+   
+    genes <- unique(c(ligrec$Receptor.Mouse,
+                      ligrec$Ligand.Mouse))
+   
+    genes <- genes[sapply(genes, function(x) {
+      entries <- strsplit(x, "[&|]")
+      if (grepl("&", x))
+        all(entries[[1]] %in% filteredGenes)
+      else any(entries[[1]] %in% filteredGenes)
+    })]
+   
+    genes_formagic <- unlist(strsplit( genes,"[&|]"))
+   
+   
+    formagic <- Matrix::t(seurat.raw.data[,seurat.cell.names])
+    formagic <- Rmagic::library.size.normalize(formagic)
+    formagic <- sqrt(formagic)
+   
+    #Run MAGIC
+    cat("Now running MAGIC to impute dropout values...\n")
+    mymagic <- Rmagic::magic(formagic, genes = genes_formagic, seed = 0xbeef)
+    mymagic <- as.data.frame(mymagic)
+   
+    #handle expression levels of heterodimers
+    resolvedRawData <- resolveData(t(mymagic), genes)
+    resolvedRawData <- t(apply(resolvedRawData, 1, function(x) (x - min(x )) / (max(x) - min(x)) ))
+   
+   
+    annotated_genes <- rownames(resolvedRawData)
+    out@mylr <- subset(ligrec, Receptor.Mouse %in% annotated_genes &
+                         Ligand.Mouse %in% annotated_genes)
+   
+    stepf<- Vectorize(function(x) if (x<0) 0 else x)
+   
+    cat("Now running RNAMagnet...\n")
+   
+    #compute mean gene expression level per population
+    out@anchors <- do.call(cbind, lapply(anchors, function(id) {
+      apply(resolvedRawData[,seurat.ident == id,drop=FALSE],1,mean)
+    }));
+    colnames(out@anchors) <- anchors
+   
+    #use fuzzy logic and operations to compute interaction score
+    out@interaction <- sapply(anchors, function(pop_l) {
+      out@mylr$expression_ligand <- out@anchors[out@mylr$Ligand.Mouse, pop_l]
+      sapply(seurat.cell.names, function(cell_r) {
+        out@mylr$expression_receptor <-resolvedRawData[out@mylr$Receptor.Mouse, cell_r]
+        sum(kernel(out@mylr$expression_ligand, k =.k, x0 = .x0) * kernel(out@mylr$expression_receptor, k = .k, x0=.x0 )) #kernel performs fuzzification
+      })
+    })
+    ### sometimes this is missing
+    colnames(out@interaction) <- anchors
+   
+    out@specificity <- t(sapply(rownames(out@interaction), function(cell) {
+      x <- out@interaction[cell,]
+      beta <- x/sum(x)
+      if (!is.null(neighborhood.distance)) alpha <- apply(out@interaction * (1-kernel(similarity[cell,],neighborhood.gradient,x0=neighborhood.distance )),2,sum) else alpha <- apply(out@interaction,2,mean)
+      alpha <- alpha / sum(alpha)
+      beta- alpha
+    }))
+    rownames(out@specificity) <- rownames(out@interaction)
+   
+    out@adhesiveness <- apply(mymagic, 1,function(x) sum(kernel(x,x0 = .x0, k = .k)))
+    return(out)
+   
+}
+### RNAMagnetSignaling
+  RNAMagnetSignaling <- function(seurat, neighborhood.distance = NULL, neighborhood.gradient = NULL, .k = 10, .x0 = 0.5, .minExpression = 10, .minMolecules = 1, .version = "1.0.0", .cellularCompartment = c("Secreted","Both"), .manualAnnotation = "Correct" ) {
+   
+    RNAMagnetBase(seurat, anchors = NULL, neighborhood.distance,neighborhood.gradient, .k, .x0, .minExpression, .minMolecules, .version, .cellularCompartment, .manualAnnotation, FALSE)
+   
+  }
+```
+Now for each object object, run RNA-Magnet signaling first on the LTHSC vs entire stroma to see ligand-receptor pairs driving the interactions between LTSHCs/MPP2s and the stromal cells with significant specificity to LTHSCs. Be sure to use Hyunjin's updated RNASignaling code that imputes a p-value:
+```{r}
+target_col <- "HSPC"
+
+ 
+
+### run RNAMagnet signaling
+    AdultStromavLTHSC_Sig_Specificity<- SetIdent(object = AdultStromavLTHSC_Sig_Specificity,
+                              cells = rownames(AdultStromavLTHSC_Sig_Specificity@meta.data),
+                              value = AdultStromavLTHSC_Sig_Specificity@meta.data[,target_col])
+    AdultStromavLTHSC_Sig_Specificity_Pairs <- RNAMagnetSignaling(AdultStromavLTHSC_Sig_Specificity)
+    
+    
+    ### permutation p-value
+    iteration_num <- 10
+    set.seed(2990)
+    random_value_list <- NULL
+    unique_anchors <- unique(AdultStromavLTHSC_Sig_Specificity@meta.data[,target_col])
+    unique_anchor_nums <- sapply(unique_anchors, function(x) length(which(AdultStromavLTHSC_Sig_Specificity@meta.data[,target_col] == x)))
+    for(i in 1:iteration_num) {
+      
+      ### set random anchors similar to the original
+      random_anchors <- rep("", sum(unique_anchor_nums))
+      for(anchor in unique_anchors) {
+        random_anchors[sample(which(random_anchors == ""), unique_anchor_nums[anchor])] <- anchor
+      }
+      
+      ### run RNAMagnet signaling with random anchors
+      AdultStromavLTHSC_Sig_Specificity <- SetIdent(object = AdultStromavLTHSC_Sig_Specificity,
+                                cells = rownames(AdultStromavLTHSC_Sig_Specificity@meta.data),
+                                value = random_anchors)
+      random_result <- RNAMagnetSignaling(AdultStromavLTHSC_Sig_Specificity)
+      
+      ### get all the interaction list
+      temp_list <- NULL
+      for(clust1 in unique(AdultStromavLTHSC_Sig_Specificity@meta.data[,target_col])) {
+        for(clust2 in unique(AdultStromavLTHSC_Sig_Specificity@meta.data[,target_col])) {
+          il <- getRNAMagnetGenes(AdultStromavLTHSC_Sig_Specificity_Pairs, clust1, clust2, thresh = 0)
+          if(nrow(il) > 0) {
+            il$ligand_cluster <- clust1
+            il$receptor_cluster <- clust2
+            if(is.null(temp_list)) {
+              temp_list <- il
+            } else {
+              temp_list <- rbind(temp_list, il)
+            }
+          }
+        }
+      }
+      temp_list <- cbind(temp_list[3:4], temp_list[1:2])
+      colnames(temp_list) <- c("Ligand_Cluster", "Receptor_Cluster", "Interaction_Score", "Interaction_Pair")
+      
+      if(is.null(random_value_list)) {
+        random_value_list <- temp_list
+      } else {
+        random_value_list <- rbind(random_value_list, temp_list)
+      }
+      
+    }
+    random_value_list <- random_value_list$Interaction_Score
+    random_value_list <- random_value_list[order(-random_value_list)]
+```
+This will generate a list of the ligand-receptor pairs, interaction score, and p-value for each ligand-receptor pair. To write this to an Excel file, use the following code:
+```{r}
+### get all the interaction list
+    interaction_list <- NULL
+    for(clust1 in unique(AdultStromavLTHSC_Sig_Specificity@meta.data[,target_col])) {
+      for(clust2 in unique(AdultStromavLTHSC_Sig_Specificity@meta.data[,target_col])) {
+        il <- getRNAMagnetGenes(AdultStromavLTHSC_Sig_Specificity_Pairs, clust1, clust2, thresh = 0)
+        if(nrow(il) > 0) {
+          il$ligand_cluster <- clust1
+          il$receptor_cluster <- clust2
+          if(is.null(interaction_list)) {
+            interaction_list <- il
+          } else {
+            interaction_list <- rbind(interaction_list, il)
+          }
+        }
+      }
+    }
+    interaction_list <- cbind(interaction_list[3:4], interaction_list[1:2])
+    colnames(interaction_list) <- c("Ligand_Cluster", "Receptor_Cluster", "Interaction_Score", "Interaction_Pair")
+    
+
+ 
+
+
+    ### give permutation p-value
+    interaction_list$Score_P_Val <- NA
+    for(i in 1:nrow(interaction_list)) {
+      interaction_list$Score_P_Val[i] <- round(length(which(random_value_list >= interaction_list$Interaction_Score[i]))/length(random_value_list),
+                                               digits = 5)
+    }
+    
+    ### change the order of the column in the list
+    interaction_list <- interaction_list[,c("Ligand_Cluster", "Receptor_Cluster", "Interaction_Score", "Score_P_Val", "Interaction_Pair")]
+write.csv(interaction_list, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_list.csv")
+```
+Should you want to subset the new objects (e.g. subset AdultStromavLTHSC_Sig_Specificity) to look at the ligand-receptor pairs that are driving interactions between each new cluster and LTHSCs/MPP2s, run the following code to first subset the cells:
+```{r}
+target_indicies <- union(which(AdultStromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(AdultStromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 0))
+target_cells <- rownames(AdultStromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity_Cluster0 <- subset(AdultStromavLTHSC_Sig_Specificity, cells = target_cells)
+save(AdultStromavLTHSC_Sig_Specificity_Cluster0, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster0.Robj")
+```
+Next, run RNAMagnetSignaling:
+```{r}
+target_col <- "HSPC"
+
+ 
+
+### run RNAMagnet signaling
+    AdultStromavLTHSC_Sig_Specificity_Cluster0<- SetIdent(object = AdultStromavLTHSC_Sig_Specificity_Cluster0,
+                              cells = rownames(AdultStromavLTHSC_Sig_Specificity_Cluster0@meta.data),
+                              value = AdultStromavLTHSC_Sig_Specificity_Cluster0@meta.data[,target_col])
+    AdultStromavLTHSC_Sig_Specificity_Cluster0_Pairs <- RNAMagnetSignaling(AdultStromavLTHSC_Sig_Specificity_Cluster0)
+    
+    
+    ### permutation p-value
+    iteration_num <- 10
+    set.seed(2990)
+    random_value_list <- NULL
+    unique_anchors <- unique(AdultStromavLTHSC_Sig_Specificity_Cluster0@meta.data[,target_col])
+    unique_anchor_nums <- sapply(unique_anchors, function(x) length(which(AdultStromavLTHSC_Sig_Specificity_Cluster0@meta.data[,target_col] == x)))
+    for(i in 1:iteration_num) {
+      
+      ### set random anchors similar to the original
+      random_anchors <- rep("", sum(unique_anchor_nums))
+      for(anchor in unique_anchors) {
+        random_anchors[sample(which(random_anchors == ""), unique_anchor_nums[anchor])] <- anchor
+      }
+      
+      ### run RNAMagnet signaling with random anchors
+      AdultStromavLTHSC_Sig_Specificity_Cluster0 <- SetIdent(object = AdultStromavLTHSC_Sig_Specificity_Cluster0,
+                                cells = rownames(AdultStromavLTHSC_Sig_Specificity_Cluster0@meta.data),
+                                value = random_anchors)
+      random_result <- RNAMagnetSignaling(AdultStromavLTHSC_Sig_Specificity_Cluster0)
+      
+      ### get all the interaction list
+      temp_list <- NULL
+      for(clust1 in unique(AdultStromavLTHSC_Sig_Specificity_Cluster0@meta.data[,target_col])) {
+        for(clust2 in unique(AdultStromavLTHSC_Sig_Specificity_Cluster0@meta.data[,target_col])) {
+          il <- getRNAMagnetGenes(AdultStromavLTHSC_Sig_Specificity_Cluster0_Pairs, clust1, clust2, thresh = 0)
+          if(nrow(il) > 0) {
+            il$ligand_cluster <- clust1
+            il$receptor_cluster <- clust2
+            if(is.null(temp_list)) {
+              temp_list <- il
+            } else {
+              temp_list <- rbind(temp_list, il)
+            }
+          }
+        }
+      }
+      temp_list <- cbind(temp_list[3:4], temp_list[1:2])
+      colnames(temp_list) <- c("Ligand_Cluster", "Receptor_Cluster", "Interaction_Score", "Interaction_Pair")
+      
+      if(is.null(random_value_list)) {
+        random_value_list <- temp_list
+      } else {
+        random_value_list <- rbind(random_value_list, temp_list)
+      }
+      
+    }
+    random_value_list <- random_value_list$Interaction_Score
+    random_value_list <- random_value_list[order(-random_value_list)]
+### get all the interaction list
+    interaction_list <- NULL
+    for(clust1 in unique(AdultStromavLTHSC_Sig_Specificity_Cluster0@meta.data[,target_col])) {
+      for(clust2 in unique(AdultStromavLTHSC_Sig_Specificity_Cluster0@meta.data[,target_col])) {
+        il <- getRNAMagnetGenes(AdultStromavLTHSC_Sig_Specificity_Cluster0_Pairs, clust1, clust2, thresh = 0)
+        if(nrow(il) > 0) {
+          il$ligand_cluster <- clust1
+          il$receptor_cluster <- clust2
+          if(is.null(interaction_list)) {
+            interaction_list <- il
+          } else {
+            interaction_list <- rbind(interaction_list, il)
+          }
+        }
+      }
+    }
+    interaction_list <- cbind(interaction_list[3:4], interaction_list[1:2])
+    colnames(interaction_list) <- c("Ligand_Cluster", "Receptor_Cluster", "Interaction_Score", "Interaction_Pair")
+    
+
+ 
+
+
+    ### give permutation p-value
+    interaction_list$Score_P_Val <- NA
+    for(i in 1:nrow(interaction_list)) {
+      interaction_list$Score_P_Val[i] <- round(length(which(random_value_list >= interaction_list$Interaction_Score[i]))/length(random_value_list),
+                                               digits = 5)
+    }
+    
+    ### change the order of the column in the list
+    interaction_list <- interaction_list[,c("Ligand_Cluster", "Receptor_Cluster", "Interaction_Score", "Score_P_Val", "Interaction_Pair")]
+write.csv(interaction_list, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster0_list.csv")
+
+```
+Doing this for all of the new objects that Hyunjin created.First, create all Niche-only objects (DO NOT COPY AND PASTE THIS, THIS WAS UPDATED oN 4/13/21!!! IT LOOKS LIKE YOU CANNOT DO THINGS IN THIS ORDER!!! MUST MAKE EACH OBJECT BEFORE MOVING TO THE NEXT!!!):
+```{r}
+target_cells <- subset(AdultStromavMPP2, Specificity_Significance %in% c("Significant"))
+target_cells <- subset(target_cells, direction %in% c("MPP2"))
+target_cells <- subset(target_cells, HSPC %in% c("Stroma"))
+target_cells
+DimPlot(target_cells)
+DefaultAssay(target_cells) <- "RNA"
+target_cells <- FindVariableFeatures(object = target_cells, selection.method = 'vst')
+length(x = VariableFeatures(object = target_cells))
+VariableFeaturePlot(object = target_cells)
+target_cells@assays$RNA@var.features <- target_cells@assays$RNA@var.features[!(target_cells@assays$RNA@var.features %in% markers.remove)]
+Adult_MPP2_Niche <- ScaleData(object = target_cells, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+Adult_MPP2_Niche <- ScaleData(Adult_MPP2_Niche, assay = "ADT")
+Adult_MPP2_Niche <- RunPCA(object = Adult_MPP2_Niche, features = VariableFeatures(object = Adult_MPP2_Niche), npcs = 100, verbose = FALSE)
+ElbowPlot(object = Adult_MPP2_Niche, ndims = 100)
+
+target_cells <- subset(P0StromavLTHSC, Specificity_Significance %in% c("Significant"))
+target_cells <- subset(target_cells, direction %in% c("LTHSC"))
+target_cells <- subset(target_cells, HSPC %in% c("Stroma"))
+target_cells
+DimPlot(target_cells)
+DefaultAssay(target_cells) <- "RNA"
+target_cells <- FindVariableFeatures(object = target_cells, selection.method = 'vst')
+length(x = VariableFeatures(object = target_cells))
+VariableFeaturePlot(object = target_cells)
+target_cells@assays$RNA@var.features <- target_cells@assays$RNA@var.features[!(target_cells@assays$RNA@var.features %in% markers.remove)]
+P0_LTHSC_Niche <- ScaleData(object = target_cells, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+P0_LTHSC_Niche <- ScaleData(P0_LTHSC_Niche, assay = "ADT")
+P0_LTHSC_Niche <- RunPCA(object = P0_LTHSC_Niche, features = VariableFeatures(object = P0_LTHSC_Niche), npcs = 100, verbose = FALSE)
+ElbowPlot(object = P0_LTHSC_Niche, ndims = 100)
+
+target_cells <- subset(P0StromavMPP2, Specificity_Significance %in% c("Significant"))
+target_cells <- subset(target_cells, direction %in% c("MPP2"))
+target_cells <- subset(target_cells, HSPC %in% c("Stroma"))
+target_cells
+DimPlot(target_cells)
+DefaultAssay(target_cells) <- "RNA"
+target_cells <- FindVariableFeatures(object = target_cells, selection.method = 'vst')
+length(x = VariableFeatures(object = target_cells))
+VariableFeaturePlot(object = target_cells)
+target_cells@assays$RNA@var.features <- target_cells@assays$RNA@var.features[!(target_cells@assays$RNA@var.features %in% markers.remove)]
+P0_MPP2_Niche <- ScaleData(object = target_cells, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+P0_MPP2_Niche <- ScaleData(P0_MPP2_Niche, assay = "ADT")
+P0_MPP2_Niche <- RunPCA(object = P0_MPP2_Niche, features = VariableFeatures(object = P0_MPP2_Niche), npcs = 100, verbose = FALSE)
+ElbowPlot(object = P0_MPP2_Niche, ndims = 100)
+
+target_cells <- subset(E18StromavLTHSC, Specificity_Significance %in% c("Significant"))
+target_cells <- subset(target_cells, direction %in% c("LTHSC"))
+target_cells <- subset(target_cells, HSPC %in% c("Stroma"))
+target_cells
+DimPlot(target_cells)
+DefaultAssay(target_cells) <- "RNA"
+target_cells <- FindVariableFeatures(object = target_cells, selection.method = 'vst')
+length(x = VariableFeatures(object = target_cells))
+VariableFeaturePlot(object = target_cells)
+target_cells@assays$RNA@var.features <- target_cells@assays$RNA@var.features[!(target_cells@assays$RNA@var.features %in% markers.remove)]
+E18_LTHSC_Niche <- ScaleData(object = target_cells, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+E18_LTHSC_Niche <- ScaleData(E18_LTHSC_Niche, assay = "ADT")
+E18_LTHSC_Niche <- RunPCA(object = E18_LTHSC_Niche, features = VariableFeatures(object = E18_LTHSC_Niche), npcs = 100, verbose = FALSE)
+ElbowPlot(object = E18_LTHSC_Niche, ndims = 100)
+
+target_cells <- subset(E18StromavMPP2, Specificity_Significance %in% c("Significant"))
+target_cells <- subset(target_cells, direction %in% c("MPP2"))
+target_cells <- subset(target_cells, HSPC %in% c("Stroma"))
+target_cells
+DimPlot(target_cells)
+DefaultAssay(target_cells) <- "RNA"
+target_cells <- FindVariableFeatures(object = target_cells, selection.method = 'vst')
+length(x = VariableFeatures(object = target_cells))
+VariableFeaturePlot(object = target_cells)
+target_cells@assays$RNA@var.features <- target_cells@assays$RNA@var.features[!(target_cells@assays$RNA@var.features %in% markers.remove)]
+E18_MPP2_Niche <- ScaleData(object = target_cells, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+E18_MPP2_Niche <- ScaleData(E18_MPP2_Niche, assay = "ADT")
+E18_MPP2_Niche <- RunPCA(object = E18_MPP2_Niche, features = VariableFeatures(object = E18_MPP2_Niche), npcs = 100, verbose = FALSE)
+ElbowPlot(object = E18_MPP2_Niche, ndims = 100)
+
+target_cells <- subset(E16StromavLTHSC, Specificity_Significance %in% c("Significant"))
+target_cells <- subset(target_cells, direction %in% c("LTHSC"))
+target_cells <- subset(target_cells, HSPC %in% c("Stroma"))
+target_cells
+DimPlot(target_cells)
+DefaultAssay(target_cells) <- "RNA"
+target_cells <- FindVariableFeatures(object = target_cells, selection.method = 'vst')
+length(x = VariableFeatures(object = target_cells))
+VariableFeaturePlot(object = target_cells)
+target_cells@assays$RNA@var.features <- target_cells@assays$RNA@var.features[!(target_cells@assays$RNA@var.features %in% markers.remove)]
+E16_LTHSC_Niche <- ScaleData(object = target_cells, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+E16_LTHSC_Niche <- ScaleData(E16_LTHSC_Niche, assay = "ADT")
+E16_LTHSC_Niche <- RunPCA(object = E16_LTHSC_Niche, features = VariableFeatures(object = E16_LTHSC_Niche), npcs = 100, verbose = FALSE)
+ElbowPlot(object = E16_LTHSC_Niche, ndims = 100)
+
+target_cells <- subset(E16StromavMPP2, Specificity_Significance %in% c("Significant"))
+target_cells <- subset(target_cells, direction %in% c("MPP2"))
+target_cells <- subset(target_cells, HSPC %in% c("Stroma"))
+target_cells
+DimPlot(target_cells)
+DefaultAssay(target_cells) <- "RNA"
+target_cells <- FindVariableFeatures(object = target_cells, selection.method = 'vst')
+length(x = VariableFeatures(object = target_cells))
+VariableFeaturePlot(object = target_cells)
+target_cells@assays$RNA@var.features <- target_cells@assays$RNA@var.features[!(target_cells@assays$RNA@var.features %in% markers.remove)]
+E16_MPP2_Niche <- ScaleData(object = target_cells, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+E16_MPP2_Niche <- ScaleData(E16_MPP2_Niche, assay = "ADT")
+E16_MPP2_Niche <- RunPCA(object = E16_MPP2_Niche, features = VariableFeatures(object = E16_MPP2_Niche), npcs = 100, verbose = FALSE)
+ElbowPlot(object = E16_MPP2_Niche, ndims = 100)
+
+Ndims_Adult_MPP2_Niche <- 20
+Adult_MPP2_Niche <- RunTSNE(object = Adult_MPP2_Niche, dims = 1:Ndims_Adult_MPP2_Niche)
+Adult_MPP2_Niche <- FindNeighbors(object = Adult_MPP2_Niche, dims = 1:Ndims_Adult_MPP2_Niche, force.recalc = TRUE, verbose = TRUE)
+Adult_MPP2_Niche <- FindClusters(object = Adult_MPP2_Niche)
+Adult_MPP2_Niche <- RunUMAP(Adult_MPP2_Niche, dims = 1:Ndims_Adult_MPP2_Niche, verbose = TRUE)
+save(Adult_MPP2_Niche, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Putative Niche Objects/Adult_MPP2_Niche.Robj")
+
+Ndims_P0_LTHSC_Niche <- 19
+P0_LTHSC_Niche <- RunTSNE(object = P0_LTHSC_Niche, dims = 1:Ndims_P0_LTHSC_Niche)
+P0_LTHSC_Niche <- FindNeighbors(object = P0_LTHSC_Niche, dims = 1:Ndims_P0_LTHSC_Niche, force.recalc = TRUE, verbose = TRUE)
+P0_LTHSC_Niche <- FindClusters(object = P0_LTHSC_Niche)
+P0_LTHSC_Niche <- RunUMAP(P0_LTHSC_Niche, dims = 1:Ndims_P0_LTHSC_Niche, verbose = TRUE)
+save(P0_LTHSC_Niche, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Putative Niche Objects/P0_LTHSC_Niche.Robj")
+
+Ndims_P0_MPP2_Niche <- 15
+P0_MPP2_Niche <- RunTSNE(object = P0_MPP2_Niche, dims = 1:Ndims_P0_MPP2_Niche)
+P0_MPP2_Niche <- FindNeighbors(object = P0_MPP2_Niche, dims = 1:Ndims_P0_MPP2_Niche, force.recalc = TRUE, verbose = TRUE)
+P0_MPP2_Niche <- FindClusters(object = P0_MPP2_Niche)
+P0_MPP2_Niche <- RunUMAP(P0_MPP2_Niche, dims = 1:Ndims_P0_MPP2_Niche, verbose = TRUE)
+save(P0_MPP2_Niche, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Putative Niche Objects/P0_MPP2_Niche.Robj")
+
+Ndims_E18_LTHSC_Niche <- 18
+E18_LTHSC_Niche <- RunTSNE(object = E18_LTHSC_Niche, dims = 1:Ndims_E18_LTHSC_Niche)
+E18_LTHSC_Niche <- FindNeighbors(object = E18_LTHSC_Niche, dims = 1:Ndims_E18_LTHSC_Niche, force.recalc = TRUE, verbose = TRUE)
+E18_LTHSC_Niche <- FindClusters(object = E18_LTHSC_Niche)
+E18_LTHSC_Niche <- RunUMAP(E18_LTHSC_Niche, dims = 1:Ndims_E18_LTHSC_Niche, verbose = TRUE)
+save(E18_LTHSC_Niche, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Putative Niche Objects/E18_LTHSC_Niche.Robj")
+
+Ndims_E18_MPP2_Niche <- 18
+E18_MPP2_Niche <- RunTSNE(object = E18_MPP2_Niche, dims = 1:Ndims_E18_MPP2_Niche)
+E18_MPP2_Niche <- FindNeighbors(object = E18_MPP2_Niche, dims = 1:Ndims_E18_MPP2_Niche, force.recalc = TRUE, verbose = TRUE)
+E18_MPP2_Niche <- FindClusters(object = E18_MPP2_Niche)
+E18_MPP2_Niche <- RunUMAP(E18_MPP2_Niche, dims = 1:Ndims_E18_MPP2_Niche, verbose = TRUE)
+save(E18_MPP2_Niche, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Putative Niche Objects/E18_MPP2_Niche.Robj")
+
+Ndims_E16_LTHSC_Niche <- 20
+E16_LTHSC_Niche <- RunTSNE(object = E16_LTHSC_Niche, dims = 1:Ndims_E16_LTHSC_Niche)
+E16_LTHSC_Niche <- FindNeighbors(object = E16_LTHSC_Niche, dims = 1:Ndims_E16_LTHSC_Niche, force.recalc = TRUE, verbose = TRUE)
+E16_LTHSC_Niche <- FindClusters(object = E16_LTHSC_Niche)
+E16_LTHSC_Niche <- RunUMAP(E16_LTHSC_Niche, dims = 1:Ndims_E16_LTHSC_Niche, verbose = TRUE)
+save(E16_LTHSC_Niche, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Putative Niche Objects/E16_LTHSC_Niche.Robj")
+
+Ndims_E16_MPP2_Niche <- 20
+E16_MPP2_Niche <- RunTSNE(object = E16_MPP2_Niche, dims = 1:Ndims_E16_MPP2_Niche)
+E16_MPP2_Niche <- FindNeighbors(object = E16_MPP2_Niche, dims = 1:Ndims_E16_MPP2_Niche, force.recalc = TRUE, verbose = TRUE)
+E16_MPP2_Niche <- FindClusters(object = E16_MPP2_Niche)
+E16_MPP2_Niche <- RunUMAP(E16_MPP2_Niche, dims = 1:Ndims_E16_MPP2_Niche, verbose = TRUE)
+save(E16_MPP2_Niche, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Putative Niche Objects/E16_MPP2_Niche.Robj")
+```
+Now, create objects with niche + LTHSCs/MPP2s:
+```{r}
+target_indicies <- union(union(intersect(which(AdultStromavMPP2@meta.data$direction == "MPP2"), which(AdultStromavMPP2@meta.data$Specificity_Significance == "Significant")),
+intersect(which(AdultStromavMPP2@meta.data$direction == "MPP2"),
+which(AdultStromavMPP2@meta.data$Annotation2 == "MPP2"))),
+intersect(which(AdultStromavMPP2@meta.data$direction == "Stroma"),
+which(AdultStromavMPP2@meta.data$Annotation2 == "MPP2")))
+target_cells <- rownames(AdultStromavMPP2@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity <- subset(AdultStromavMPP2, cells = target_cells)
+DefaultAssay(AdultStromavMPP2_Sig_Specificity) <- "RNA"
+AdultStromavMPP2_Sig_Specificity <- FindVariableFeatures(object = AdultStromavMPP2_Sig_Specificity, selection.method = 'vst')
+length(x = VariableFeatures(object = AdultStromavMPP2_Sig_Specificity))
+VariableFeaturePlot(object = AdultStromavMPP2_Sig_Specificity)
+AdultStromavMPP2_Sig_Specificity@assays$RNA@var.features <- AdultStromavMPP2_Sig_Specificity@assays$RNA@var.features[!(AdultStromavMPP2_Sig_Specificity@assays$RNA@var.features %in% markers.remove)]
+AdultStromavMPP2_Sig_Specificity <- ScaleData(object = AdultStromavMPP2_Sig_Specificity, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+AdultStromavMPP2_Sig_Specificity <- ScaleData(AdultStromavMPP2_Sig_Specificity, assay = "ADT")
+AdultStromavMPP2_Sig_Specificity <- RunPCA(object = AdultStromavMPP2_Sig_Specificity, features = VariableFeatures(object = AdultStromavMPP2_Sig_Specificity), npcs = 100, verbose = FALSE)
+ElbowPlot(object = AdultStromavMPP2_Sig_Specificity, ndims = 100)
+
+
+
+target_indicies <- union(union(intersect(which(P0StromavLTHSC@meta.data$direction == "LTHSC"), which(P0StromavLTHSC@meta.data$Specificity_Significance == "Significant")),
+intersect(which(P0StromavLTHSC@meta.data$direction == "LTHSC"),
+which(P0StromavLTHSC@meta.data$Annotation2 == "LTHSC"))),
+intersect(which(P0StromavLTHSC@meta.data$direction == "Stroma"),
+which(P0StromavLTHSC@meta.data$Annotation2 == "LTHSC")))
+target_cells <- rownames(P0StromavLTHSC@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity <- subset(P0StromavLTHSC, cells = target_cells)
+DefaultAssay(P0StromavLTHSC_Sig_Specificity) <- "RNA"
+P0StromavLTHSC_Sig_Specificity <- FindVariableFeatures(object = P0StromavLTHSC_Sig_Specificity, selection.method = 'vst')
+length(x = VariableFeatures(object = P0StromavLTHSC_Sig_Specificity))
+VariableFeaturePlot(object = P0StromavLTHSC_Sig_Specificity)
+P0StromavLTHSC_Sig_Specificity@assays$RNA@var.features <- P0StromavLTHSC_Sig_Specificity@assays$RNA@var.features[!(P0StromavLTHSC_Sig_Specificity@assays$RNA@var.features %in% markers.remove)]
+P0StromavLTHSC_Sig_Specificity <- ScaleData(object = P0StromavLTHSC_Sig_Specificity, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+P0StromavLTHSC_Sig_Specificity <- ScaleData(P0StromavLTHSC_Sig_Specificity, assay = "ADT")
+P0StromavLTHSC_Sig_Specificity <- RunPCA(object = P0StromavLTHSC_Sig_Specificity, features = VariableFeatures(object = P0StromavLTHSC_Sig_Specificity), npcs = 100, verbose = FALSE)
+ElbowPlot(object = P0StromavLTHSC_Sig_Specificity, ndims = 100)
+
+target_indicies <- union(union(intersect(which(P0StromavMPP2@meta.data$direction == "MPP2"), which(P0StromavMPP2@meta.data$Specificity_Significance == "Significant")),
+intersect(which(P0StromavMPP2@meta.data$direction == "MPP2"),
+which(P0StromavMPP2@meta.data$Annotation2 == "MPP2"))),
+intersect(which(P0StromavMPP2@meta.data$direction == "Stroma"),
+which(P0StromavMPP2@meta.data$Annotation2 == "MPP2")))
+target_cells <- rownames(P0StromavMPP2@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity <- subset(P0StromavMPP2, cells = target_cells)
+DefaultAssay(P0StromavMPP2_Sig_Specificity) <- "RNA"
+P0StromavMPP2_Sig_Specificity <- FindVariableFeatures(object = P0StromavMPP2_Sig_Specificity, selection.method = 'vst')
+length(x = VariableFeatures(object = P0StromavMPP2_Sig_Specificity))
+VariableFeaturePlot(object = P0StromavMPP2_Sig_Specificity)
+P0StromavMPP2_Sig_Specificity@assays$RNA@var.features <- P0StromavMPP2_Sig_Specificity@assays$RNA@var.features[!(P0StromavMPP2_Sig_Specificity@assays$RNA@var.features %in% markers.remove)]
+P0StromavMPP2_Sig_Specificity <- ScaleData(object = P0StromavMPP2_Sig_Specificity, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+P0StromavMPP2_Sig_Specificity <- ScaleData(P0StromavMPP2_Sig_Specificity, assay = "ADT")
+P0StromavMPP2_Sig_Specificity <- RunPCA(object = P0StromavMPP2_Sig_Specificity, features = VariableFeatures(object = P0StromavMPP2_Sig_Specificity), npcs = 100, verbose = FALSE)
+ElbowPlot(object = P0StromavMPP2_Sig_Specificity, ndims = 100)
+
+
+
+target_indicies <- union(union(intersect(which(E18StromavLTHSC@meta.data$direction == "LTHSC"), which(E18StromavLTHSC@meta.data$Specificity_Significance == "Significant")),
+intersect(which(E18StromavLTHSC@meta.data$direction == "LTHSC"),
+which(E18StromavLTHSC@meta.data$Annotation2 == "LTHSC"))),
+intersect(which(E18StromavLTHSC@meta.data$direction == "Stroma"),
+which(E18StromavLTHSC@meta.data$Annotation2 == "LTHSC")))
+target_cells <- rownames(E18StromavLTHSC@meta.data)[target_indicies]
+E18StromavLTHSC_Sig_Specificity <- subset(E18StromavLTHSC, cells = target_cells)
+DefaultAssay(E18StromavLTHSC_Sig_Specificity) <- "RNA"
+E18StromavLTHSC_Sig_Specificity <- FindVariableFeatures(object = E18StromavLTHSC_Sig_Specificity, selection.method = 'vst')
+length(x = VariableFeatures(object = E18StromavLTHSC_Sig_Specificity))
+VariableFeaturePlot(object = E18StromavLTHSC_Sig_Specificity)
+E18StromavLTHSC_Sig_Specificity@assays$RNA@var.features <- E18StromavLTHSC_Sig_Specificity@assays$RNA@var.features[!(E18StromavLTHSC_Sig_Specificity@assays$RNA@var.features %in% markers.remove)]
+E18StromavLTHSC_Sig_Specificity <- ScaleData(object = E18StromavLTHSC_Sig_Specificity, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+E18StromavLTHSC_Sig_Specificity <- ScaleData(E18StromavLTHSC_Sig_Specificity, assay = "ADT")
+E18StromavLTHSC_Sig_Specificity <- RunPCA(object = E18StromavLTHSC_Sig_Specificity, features = VariableFeatures(object = E18StromavLTHSC_Sig_Specificity), npcs = 100, verbose = FALSE)
+ElbowPlot(object = E18StromavLTHSC_Sig_Specificity, ndims = 100)
+
+target_indicies <- union(union(intersect(which(E18StromavMPP2@meta.data$direction == "MPP2"), which(E18StromavMPP2@meta.data$Specificity_Significance == "Significant")),
+intersect(which(E18StromavMPP2@meta.data$direction == "MPP2"),
+which(E18StromavMPP2@meta.data$Annotation2 == "MPP2"))),
+intersect(which(E18StromavMPP2@meta.data$direction == "Stroma"),
+which(E18StromavMPP2@meta.data$Annotation2 == "MPP2")))
+target_cells <- rownames(E18StromavMPP2@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity <- subset(E18StromavMPP2, cells = target_cells)
+DefaultAssay(E18StromavMPP2_Sig_Specificity) <- "RNA"
+E18StromavMPP2_Sig_Specificity <- FindVariableFeatures(object = E18StromavMPP2_Sig_Specificity, selection.method = 'vst')
+length(x = VariableFeatures(object = E18StromavMPP2_Sig_Specificity))
+VariableFeaturePlot(object = E18StromavMPP2_Sig_Specificity)
+E18StromavMPP2_Sig_Specificity@assays$RNA@var.features <- E18StromavMPP2_Sig_Specificity@assays$RNA@var.features[!(E18StromavMPP2_Sig_Specificity@assays$RNA@var.features %in% markers.remove)]
+E18StromavMPP2_Sig_Specificity <- ScaleData(object = E18StromavMPP2_Sig_Specificity, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+E18StromavMPP2_Sig_Specificity <- ScaleData(E18StromavMPP2_Sig_Specificity, assay = "ADT")
+E18StromavMPP2_Sig_Specificity <- RunPCA(object = E18StromavMPP2_Sig_Specificity, features = VariableFeatures(object = E18StromavMPP2_Sig_Specificity), npcs = 100, verbose = FALSE)
+ElbowPlot(object = E18StromavMPP2_Sig_Specificity, ndims = 100)
+
+
+
+target_indicies <- union(union(intersect(which(E16StromavLTHSC@meta.data$direction == "LTHSC"), which(E16StromavLTHSC@meta.data$Specificity_Significance == "Significant")),
+intersect(which(E16StromavLTHSC@meta.data$direction == "LTHSC"),
+which(E16StromavLTHSC@meta.data$Annotation2 == "LTHSC"))),
+intersect(which(E16StromavLTHSC@meta.data$direction == "Stroma"),
+which(E16StromavLTHSC@meta.data$Annotation2 == "LTHSC")))
+target_cells <- rownames(E16StromavLTHSC@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity <- subset(E16StromavLTHSC, cells = target_cells)
+DefaultAssay(E16StromavLTHSC_Sig_Specificity) <- "RNA"
+E16StromavLTHSC_Sig_Specificity <- FindVariableFeatures(object = E16StromavLTHSC_Sig_Specificity, selection.method = 'vst')
+length(x = VariableFeatures(object = E16StromavLTHSC_Sig_Specificity))
+VariableFeaturePlot(object = E16StromavLTHSC_Sig_Specificity)
+E16StromavLTHSC_Sig_Specificity@assays$RNA@var.features <- E16StromavLTHSC_Sig_Specificity@assays$RNA@var.features[!(E16StromavLTHSC_Sig_Specificity@assays$RNA@var.features %in% markers.remove)]
+E16StromavLTHSC_Sig_Specificity <- ScaleData(object = E16StromavLTHSC_Sig_Specificity, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+E16StromavLTHSC_Sig_Specificity <- ScaleData(E16StromavLTHSC_Sig_Specificity, assay = "ADT")
+E16StromavLTHSC_Sig_Specificity <- RunPCA(object = E16StromavLTHSC_Sig_Specificity, features = VariableFeatures(object = E16StromavLTHSC_Sig_Specificity), npcs = 100, verbose = FALSE)
+ElbowPlot(object = E16StromavLTHSC_Sig_Specificity, ndims = 100)
+
+target_indicies <- union(union(intersect(which(E16StromavMPP2@meta.data$direction == "MPP2"), which(E16StromavMPP2@meta.data$Specificity_Significance == "Significant")),
+intersect(which(E16StromavMPP2@meta.data$direction == "MPP2"),
+which(E16StromavMPP2@meta.data$Annotation2 == "MPP2"))),
+intersect(which(E16StromavMPP2@meta.data$direction == "Stroma"),
+which(E16StromavMPP2@meta.data$Annotation2 == "MPP2")))
+target_cells <- rownames(E16StromavMPP2@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity <- subset(E16StromavMPP2, cells = target_cells)
+DefaultAssay(E16StromavMPP2_Sig_Specificity) <- "RNA"
+E16StromavMPP2_Sig_Specificity <- FindVariableFeatures(object = E16StromavMPP2_Sig_Specificity, selection.method = 'vst')
+length(x = VariableFeatures(object = E16StromavMPP2_Sig_Specificity))
+VariableFeaturePlot(object = E16StromavMPP2_Sig_Specificity)
+E16StromavMPP2_Sig_Specificity@assays$RNA@var.features <- E16StromavMPP2_Sig_Specificity@assays$RNA@var.features[!(E16StromavMPP2_Sig_Specificity@assays$RNA@var.features %in% markers.remove)]
+E16StromavMPP2_Sig_Specificity <- ScaleData(object = E16StromavMPP2_Sig_Specificity, vars.to.regress = c("nCount_RNA","percent.mito", "S.Score", "G2M.Score"),verbose = TRUE)
+E16StromavMPP2_Sig_Specificity <- ScaleData(E16StromavMPP2_Sig_Specificity, assay = "ADT")
+E16StromavMPP2_Sig_Specificity <- RunPCA(object = E16StromavMPP2_Sig_Specificity, features = VariableFeatures(object = E16StromavMPP2_Sig_Specificity), npcs = 100, verbose = FALSE)
+ElbowPlot(object = E16StromavMPP2_Sig_Specificity, ndims = 100)
+
+Ndims_AdultStromavMPP2_Sig_Specificity <- 25
+AdultStromavMPP2_Sig_Specificity <- RunTSNE(object = AdultStromavMPP2_Sig_Specificity, dims = 1:Ndims_AdultStromavMPP2_Sig_Specificity)
+AdultStromavMPP2_Sig_Specificity <- FindNeighbors(object = AdultStromavMPP2_Sig_Specificity, dims = 1:Ndims_AdultStromavMPP2_Sig_Specificity, force.recalc = TRUE, verbose = TRUE)
+AdultStromavMPP2_Sig_Specificity <- FindClusters(object = AdultStromavMPP2_Sig_Specificity)
+AdultStromavMPP2_Sig_Specificity <- RunUMAP(AdultStromavMPP2_Sig_Specificity, dims = 1:Ndims_AdultStromavMPP2_Sig_Specificity, verbose = TRUE)
+save(AdultStromavMPP2_Sig_Specificity, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity.Robj")
+
+Ndims_P0StromavLTHSC_Sig_Specificity <- 20
+P0StromavLTHSC_Sig_Specificity <- RunTSNE(object = P0StromavLTHSC_Sig_Specificity, dims = 1:Ndims_P0StromavLTHSC_Sig_Specificity)
+P0StromavLTHSC_Sig_Specificity <- FindNeighbors(object = P0StromavLTHSC_Sig_Specificity, dims = 1:Ndims_P0StromavLTHSC_Sig_Specificity, force.recalc = TRUE, verbose = TRUE)
+P0StromavLTHSC_Sig_Specificity <- FindClusters(object = P0StromavLTHSC_Sig_Specificity)
+P0StromavLTHSC_Sig_Specificity <- RunUMAP(P0StromavLTHSC_Sig_Specificity, dims = 1:Ndims_P0StromavLTHSC_Sig_Specificity, verbose = TRUE)
+save(P0StromavLTHSC_Sig_Specificity, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity.Robj")
+
+Ndims_P0StromavMPP2_Sig_Specificity <- 23
+P0StromavMPP2_Sig_Specificity <- RunTSNE(object = P0StromavMPP2_Sig_Specificity, dims = 1:Ndims_P0StromavMPP2_Sig_Specificity)
+P0StromavMPP2_Sig_Specificity <- FindNeighbors(object = P0StromavMPP2_Sig_Specificity, dims = 1:Ndims_P0StromavMPP2_Sig_Specificity, force.recalc = TRUE, verbose = TRUE)
+P0StromavMPP2_Sig_Specificity <- FindClusters(object = P0StromavMPP2_Sig_Specificity)
+P0StromavMPP2_Sig_Specificity <- RunUMAP(P0StromavMPP2_Sig_Specificity, dims = 1:Ndims_P0StromavMPP2_Sig_Specificity, verbose = TRUE)
+save(P0StromavMPP2_Sig_Specificity, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity.Robj")
+
+Ndims_E18StromavLTHSC_Sig_Specificity <- 20
+E18StromavLTHSC_Sig_Specificity <- RunTSNE(object = E18StromavLTHSC_Sig_Specificity, dims = 1:Ndims_E18StromavLTHSC_Sig_Specificity)
+E18StromavLTHSC_Sig_Specificity <- FindNeighbors(object = E18StromavLTHSC_Sig_Specificity, dims = 1:Ndims_E18StromavLTHSC_Sig_Specificity, force.recalc = TRUE, verbose = TRUE)
+E18StromavLTHSC_Sig_Specificity <- FindClusters(object = E18StromavLTHSC_Sig_Specificity)
+E18StromavLTHSC_Sig_Specificity <- RunUMAP(E18StromavLTHSC_Sig_Specificity, dims = 1:Ndims_E18StromavLTHSC_Sig_Specificity, verbose = TRUE)
+save(E18StromavLTHSC_Sig_Specificity, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavLTHSC_Sig_Specificity.Robj")
+
+Ndims_E18StromavMPP2_Sig_Specificity <- 22
+E18StromavMPP2_Sig_Specificity <- RunTSNE(object = E18StromavMPP2_Sig_Specificity, dims = 1:Ndims_E18StromavMPP2_Sig_Specificity)
+E18StromavMPP2_Sig_Specificity <- FindNeighbors(object = E18StromavMPP2_Sig_Specificity, dims = 1:Ndims_E18StromavMPP2_Sig_Specificity, force.recalc = TRUE, verbose = TRUE)
+E18StromavMPP2_Sig_Specificity <- FindClusters(object = E18StromavMPP2_Sig_Specificity)
+E18StromavMPP2_Sig_Specificity <- RunUMAP(E18StromavMPP2_Sig_Specificity, dims = 1:Ndims_E18StromavMPP2_Sig_Specificity, verbose = TRUE)
+save(E18StromavMPP2_Sig_Specificity, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity.Robj")
+
+Ndims_E16StromavLTHSC_Sig_Specificity <- 25
+E16StromavLTHSC_Sig_Specificity <- RunTSNE(object = E16StromavLTHSC_Sig_Specificity, dims = 1:Ndims_E16StromavLTHSC_Sig_Specificity)
+E16StromavLTHSC_Sig_Specificity <- FindNeighbors(object = E16StromavLTHSC_Sig_Specificity, dims = 1:Ndims_E16StromavLTHSC_Sig_Specificity, force.recalc = TRUE, verbose = TRUE)
+E16StromavLTHSC_Sig_Specificity <- FindClusters(object = E16StromavLTHSC_Sig_Specificity)
+E16StromavLTHSC_Sig_Specificity <- RunUMAP(E16StromavLTHSC_Sig_Specificity, dims = 1:Ndims_E16StromavLTHSC_Sig_Specificity, verbose = TRUE)
+save(E16StromavLTHSC_Sig_Specificity, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity.Robj")
+
+Ndims_E16StromavMPP2_Sig_Specificity <- 20
+E16StromavMPP2_Sig_Specificity <- RunTSNE(object = E16StromavMPP2_Sig_Specificity, dims = 1:Ndims_E16StromavMPP2_Sig_Specificity)
+E16StromavMPP2_Sig_Specificity <- FindNeighbors(object = E16StromavMPP2_Sig_Specificity, dims = 1:Ndims_E16StromavMPP2_Sig_Specificity, force.recalc = TRUE, verbose = TRUE)
+E16StromavMPP2_Sig_Specificity <- FindClusters(object = E16StromavMPP2_Sig_Specificity)
+E16StromavMPP2_Sig_Specificity <- RunUMAP(E16StromavMPP2_Sig_Specificity, dims = 1:Ndims_E16StromavMPP2_Sig_Specificity, verbose = TRUE)
+save(E16StromavMPP2_Sig_Specificity, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity.Robj")
+
+```
+Next, create the subsets for each object for future RNAMagnet Analysis (LTHSC/MPP2 vs Cluster 0, 1, etc.). First, check for how many clusters are in each object:
+```{r}
+DimPlot(AdultStromavLTHSC_Sig_Specificity)
+DimPlot(AdultStromavMPP2_Sig_Specificity)
+DimPlot(P0StromavLTHSC_Sig_Specificity)
+DimPlot(P0StromavMPP2_Sig_Specificity)
+DimPlot(E18StromavLTHSC_Sig_Specificity)
+DimPlot(E18StromavMPP2_Sig_Specificity)
+DimPlot(E16StromavLTHSC_Sig_Specificity)
+DimPlot(E16StromavMPP2_Sig_Specificity)
+```
+Now create each object:
+```{r}
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 0))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster0 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster0, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster0.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 1))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster1 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster1, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster1.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 2))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster2 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster2.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 3))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster3 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster3, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster3.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 4))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster4 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster4, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster4.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 5))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster5 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster5, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster5.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 6))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster6 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster6, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster6.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 7))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster7 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster7, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster7.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 8))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster8 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster8, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster8.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 9))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster9 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster9, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster9.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 10))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster10 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster10, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster10.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 11))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster11 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster11, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster11.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 12))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster12 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster12, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster12.Robj")
+
+target_indicies <- union(which(E16StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E16StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 13))
+target_cells <- rownames(E16StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E16StromavMPP2_Sig_Specificity_Cluster13 <- subset(E16StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E16StromavMPP2_Sig_Specificity_Cluster13, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavMPP2_Sig_Specificity_Cluster13.Robj")
+
+
+target_indicies <- union(which(AdultStromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(AdultStromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 1))
+target_cells <- rownames(AdultStromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity_Cluster1 <- subset(AdultStromavLTHSC_Sig_Specificity, cells = target_cells)
+save(AdultStromavLTHSC_Sig_Specificity_Cluster1, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster1.Robj")
+
+target_indicies <- union(which(AdultStromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(AdultStromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 2))
+target_cells <- rownames(AdultStromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity_Cluster2 <- subset(AdultStromavLTHSC_Sig_Specificity, cells = target_cells)
+save(AdultStromavLTHSC_Sig_Specificity_Cluster2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster2.Robj")
+
+target_indicies <- union(which(AdultStromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(AdultStromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 3))
+target_cells <- rownames(AdultStromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity_Cluster3 <- subset(AdultStromavLTHSC_Sig_Specificity, cells = target_cells)
+save(AdultStromavLTHSC_Sig_Specificity_Cluster3, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster3.Robj")
+
+target_indicies <- union(which(AdultStromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(AdultStromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 4))
+target_cells <- rownames(AdultStromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity_Cluster4 <- subset(AdultStromavLTHSC_Sig_Specificity, cells = target_cells)
+save(AdultStromavLTHSC_Sig_Specificity_Cluster4, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster4.Robj")
+
+target_indicies <- union(which(AdultStromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(AdultStromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 5))
+target_cells <- rownames(AdultStromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity_Cluster5 <- subset(AdultStromavLTHSC_Sig_Specificity, cells = target_cells)
+save(AdultStromavLTHSC_Sig_Specificity_Cluster5, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster5.Robj")
+
+target_indicies <- union(which(AdultStromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(AdultStromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 6))
+target_cells <- rownames(AdultStromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity_Cluster6 <- subset(AdultStromavLTHSC_Sig_Specificity, cells = target_cells)
+save(AdultStromavLTHSC_Sig_Specificity_Cluster6, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster6.Robj")
+
+target_indicies <- union(which(AdultStromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(AdultStromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 7))
+target_cells <- rownames(AdultStromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity_Cluster7 <- subset(AdultStromavLTHSC_Sig_Specificity, cells = target_cells)
+save(AdultStromavLTHSC_Sig_Specificity_Cluster7, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster7.Robj")
+
+target_indicies <- union(which(AdultStromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(AdultStromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 8))
+target_cells <- rownames(AdultStromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity_Cluster8 <- subset(AdultStromavLTHSC_Sig_Specificity, cells = target_cells)
+save(AdultStromavLTHSC_Sig_Specificity_Cluster8, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster8.Robj")
+
+target_indicies <- union(which(AdultStromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(AdultStromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 9))
+target_cells <- rownames(AdultStromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity_Cluster9 <- subset(AdultStromavLTHSC_Sig_Specificity, cells = target_cells)
+save(AdultStromavLTHSC_Sig_Specificity_Cluster9, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster9.Robj")
+
+target_indicies <- union(which(AdultStromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(AdultStromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 10))
+target_cells <- rownames(AdultStromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavLTHSC_Sig_Specificity_Cluster10 <- subset(AdultStromavLTHSC_Sig_Specificity, cells = target_cells)
+save(AdultStromavLTHSC_Sig_Specificity_Cluster10, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavLTHSC_Sig_Specificity_Cluster10.Robj")
+
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 0))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster0 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster0, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster0.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 1))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster1 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster1, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster1.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 2))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster2 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster2.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 3))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster3 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster3, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster3.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 4))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster4 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster4, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster4.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 5))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster5 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster5, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster5.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 6))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster6 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster6, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster6.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 7))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster7 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster7, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster7.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 8))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster8 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster8, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster8.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 9))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster9 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster9, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster9.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 10))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster10 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster10, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster10.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 11))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster11 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster11, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster11.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 12))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster12 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster12, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster12.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 13))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster13 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster13, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster13.Robj")
+
+target_indicies <- union(which(AdultStromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(AdultStromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 14))
+target_cells <- rownames(AdultStromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+AdultStromavMPP2_Sig_Specificity_Cluster14 <- subset(AdultStromavMPP2_Sig_Specificity, cells = target_cells)
+save(AdultStromavMPP2_Sig_Specificity_Cluster14, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/AdultStromavMPP2_Sig_Specificity_Cluster14.Robj")
+
+
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 0))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster0 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster0, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster0.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 1))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster1 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster1, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster1.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 2))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster2 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster2.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 3))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster3 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster3, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster3.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 4))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster4 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster4, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster4.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 5))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster5 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster5, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster5.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 6))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster6 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster6, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster6.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 7))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster7 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster7, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster7.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 8))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster8 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster8, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster8.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 9))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster9 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster9, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster9.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 10))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster10 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster10, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster10.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 11))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster11 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster11, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster11.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 12))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster12 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster12, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster12.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 13))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster13 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster13, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster13.Robj")
+
+target_indicies <- union(which(P0StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(P0StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 14))
+target_cells <- rownames(P0StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+P0StromavLTHSC_Sig_Specificity_Cluster14 <- subset(P0StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(P0StromavLTHSC_Sig_Specificity_Cluster14, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavLTHSC_Sig_Specificity_Cluster14.Robj")
+
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 0))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster0 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster0, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster0.Robj")
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 1))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster1 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster1, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster1.Robj")
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 2))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster2 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster2.Robj")
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 3))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster3 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster3, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster3.Robj")
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 4))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster4 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster4, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster4.Robj")
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 5))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster5 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster5, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster5.Robj")
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 6))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster6 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster6, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster6.Robj")
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 7))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster7 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster7, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster7.Robj")
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 8))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster8 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster8, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster8.Robj")
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 9))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster9 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster9, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster9.Robj")
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 10))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster10 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster10, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster10.Robj")
+
+target_indicies <- union(which(P0StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(P0StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 11))
+target_cells <- rownames(P0StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+P0StromavMPP2_Sig_Specificity_Cluster11 <- subset(P0StromavMPP2_Sig_Specificity, cells = target_cells)
+save(P0StromavMPP2_Sig_Specificity_Cluster11, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/P0StromavMPP2_Sig_Specificity_Cluster11.Robj")
+
+
+
+target_indicies <- union(which(E18StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E18StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 0))
+target_cells <- rownames(E18StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E18StromavLTHSC_Sig_Specificity_Cluster0 <- subset(E18StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E18StromavLTHSC_Sig_Specificity_Cluster0, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavLTHSC_Sig_Specificity_Cluster0.Robj")
+
+target_indicies <- union(which(E18StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E18StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 1))
+target_cells <- rownames(E18StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E18StromavLTHSC_Sig_Specificity_Cluster1 <- subset(E18StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E18StromavLTHSC_Sig_Specificity_Cluster1, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavLTHSC_Sig_Specificity_Cluster1.Robj")
+
+target_indicies <- union(which(E18StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E18StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 2))
+target_cells <- rownames(E18StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E18StromavLTHSC_Sig_Specificity_Cluster2 <- subset(E18StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E18StromavLTHSC_Sig_Specificity_Cluster2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavLTHSC_Sig_Specificity_Cluster2.Robj")
+
+target_indicies <- union(which(E18StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E18StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 3))
+target_cells <- rownames(E18StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E18StromavLTHSC_Sig_Specificity_Cluster3 <- subset(E18StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E18StromavLTHSC_Sig_Specificity_Cluster3, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavLTHSC_Sig_Specificity_Cluster3.Robj")
+
+target_indicies <- union(which(E18StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E18StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 4))
+target_cells <- rownames(E18StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E18StromavLTHSC_Sig_Specificity_Cluster4 <- subset(E18StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E18StromavLTHSC_Sig_Specificity_Cluster4, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavLTHSC_Sig_Specificity_Cluster4.Robj")
+
+target_indicies <- union(which(E18StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E18StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 5))
+target_cells <- rownames(E18StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E18StromavLTHSC_Sig_Specificity_Cluster5 <- subset(E18StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E18StromavLTHSC_Sig_Specificity_Cluster5, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavLTHSC_Sig_Specificity_Cluster5.Robj")
+
+target_indicies <- union(which(E18StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E18StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 6))
+target_cells <- rownames(E18StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E18StromavLTHSC_Sig_Specificity_Cluster6 <- subset(E18StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E18StromavLTHSC_Sig_Specificity_Cluster6, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavLTHSC_Sig_Specificity_Cluster6.Robj")
+
+target_indicies <- union(which(E18StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E18StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 7))
+target_cells <- rownames(E18StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E18StromavLTHSC_Sig_Specificity_Cluster7 <- subset(E18StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E18StromavLTHSC_Sig_Specificity_Cluster7, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavLTHSC_Sig_Specificity_Cluster7.Robj")
+
+target_indicies <- union(which(E18StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E18StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 8))
+target_cells <- rownames(E18StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E18StromavLTHSC_Sig_Specificity_Cluster8 <- subset(E18StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E18StromavLTHSC_Sig_Specificity_Cluster8, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavLTHSC_Sig_Specificity_Cluster8.Robj")
+
+target_indicies <- union(which(E18StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E18StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 9))
+target_cells <- rownames(E18StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E18StromavLTHSC_Sig_Specificity_Cluster9 <- subset(E18StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E18StromavLTHSC_Sig_Specificity_Cluster9, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavLTHSC_Sig_Specificity_Cluster9.Robj")
+
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 0))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster0 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster0, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster0.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 1))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster1 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster1, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster1.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 2))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster2 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster2.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 3))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster3 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster3, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster3.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 4))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster4 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster4, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster4.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 5))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster5 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster5, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster5.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 6))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster6 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster6, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster6.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 7))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster7 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster7, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster7.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 8))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster8 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster8, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster8.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 9))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster9 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster9, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster9.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 10))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster10 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster10, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster10.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 11))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster11 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster11, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster11.Robj")
+
+target_indicies <- union(which(E18StromavMPP2_Sig_Specificity@meta.data$Annotation3 == "MPP2"), which(E18StromavMPP2_Sig_Specificity@meta.data$seurat_clusters == 12))
+target_cells <- rownames(E18StromavMPP2_Sig_Specificity@meta.data)[target_indicies]
+E18StromavMPP2_Sig_Specificity_Cluster12 <- subset(E18StromavMPP2_Sig_Specificity, cells = target_cells)
+save(E18StromavMPP2_Sig_Specificity_Cluster12, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E18StromavMPP2_Sig_Specificity_Cluster12.Robj")
+
+
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 0))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster0 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster0, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster0.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 1))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster1 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster1, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster1.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 2))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster2 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster2, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster2.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 3))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster3 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster3, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster3.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 4))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster4 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster4, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster4.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 5))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster5 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster5, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster5.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 6))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster6 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster6, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster6.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 7))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster7 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster7, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster7.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 8))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster8 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster8, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster8.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 9))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster9 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster9, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster9.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 10))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster10 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster10, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster10.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 11))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster11 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster11, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster11.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 12))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster12 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster12, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster12.Robj")
+
+target_indicies <- union(which(E16StromavLTHSC_Sig_Specificity@meta.data$Annotation2 == "LTHSC"), which(E16StromavLTHSC_Sig_Specificity@meta.data$seurat_clusters == 13))
+target_cells <- rownames(E16StromavLTHSC_Sig_Specificity@meta.data)[target_indicies]
+E16StromavLTHSC_Sig_Specificity_Cluster13 <- subset(E16StromavLTHSC_Sig_Specificity, cells = target_cells)
+save(E16StromavLTHSC_Sig_Specificity_Cluster13, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/E16StromavLTHSC_Sig_Specificity_Cluster13.Robj")
+
+```
+Now run RNAMagnetSignaling with the permutation for p-values for each object (Not shown due to length). After doing this, I went through each list and found the significant ligand-receptor pairs for each comparison (Total stroma vs LTHSC/MPP2 as well as Each cluster in each objects vs LTHSC/MPP2) and compiled them into a list.  I then took the significant ligand-receptor pairs driving the interactions for each total stroma vs LTHSC/MPP2 population (from all timepoints) and made a list of the interaction scores for each ligand-receptor pair across development. Want to put that into a heatmap. First, do LTHSCs:
+```{r}
+library(readxl)
+library(ggplot2)
+library(reshape2)
+LTHSC_LR <- read_excel("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/LTHSC_ligand-receptor_matrix.xlsx", col_types = c("text", "numeric", "numeric", "numeric", "numeric"))
+View(LTHSC_LR)
+rownames(LTHSC_LR) <- LTHSC_LR$Pair
+melt_LTHSC_LR <- melt(LTHSC_LR)
+head(melt_LTHSC_LR)
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "red")
+##This automatically places the factor "Pair" levels in descending alphabetical order. To change them to the desired order, you have to manually input the values
+melt_LTHSC_LR$Pair <- factor(melt_LTHSC_LR$Pair, levels = c('Kitl-Kit','Apoe-Sorl1','Igf2-Insr','Igf2-Igf1r','Mdk-Itgb2','Penk-Ogfr','Igf1-Insr','Igf1-Igf1r','App&Bace1-Tnfrsf21','Bmp2-Acvr2b','Mfap2-Notch1','Tgfb3-Tgfbr1','Tgfb2-Tgfbr1','Tgfb3-Tgfbr2'))
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "red")
+##Can also play around with the colors and layout of the heatmap:
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+     geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "blue")
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "darkblue", high = "red")
+##To use a color brewer palette:
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_distiller(palette = "Spectral")
+##To use the viridis palette:
+ggplot(melt_LTHSC_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_viridis(discrete = FALSE)
+##Going to go with the R colors, white --> red; That seems to be the best representation##
+```
+Now do MPP2s:
+```{r}
+MPP2_LR <- read_excel("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/MPP2_ligand-receptor_matrix.xlsx", col_types = c("text", "numeric", "numeric", "numeric", "numeric"))
+View(MPP2_LR)
+rownames(MPP2_LR) <- MPP2_LR$Pair
+melt_MPP2_LR <- melt(MPP2_LR)
+head(melt_MPP2_LR)
+ggplot(melt_MPP2_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "red")
+##This automatically places the factor "Pair" levels in descending alphabetical order. To change them to the desired order, you have to manually input the values:
+melt_MPP2_LR$Pair <- factor(melt_MPP2_LR$Pair, levels = c('Tgfb1-Cxcr4','Igf1-Igf1r','Kitl-Kit','Csf1-Csf1r','Igf2-Igf1r','Cyr61-Itga2b&Itgb3','Igf2-Insr','Penk-Ogfr','Mdk-Itgb2','App&Bace1-Tnfrsf21','Gpi1-Amfr','Nrtn-Gfra1','Igfbp4-Lrp6','Tgfb2-Tgfbr1','Tgfb3-Tgfbr1' ))
+ggplot(melt_MPP2_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "red")
+##Can also play around with the colors and layout of the heatmap:
+ggplot(melt_MPP2_LR, aes(variable, Pair)) +
+     geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "blue")
+ggplot(melt_MPP2_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "darkblue", high = "red")
+##To use a color brewer palette:
+ggplot(melt_MPP2_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_distiller(palette = "Spectral")
+##To use the viridis palette:
+ggplot(melt_MPP2_LR, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_viridis(discrete = FALSE)
+##Going to go with the R colors, white --> red; That seems to be the best representation##
+```
+FOr normalized values (each ligand-receptor pair interaction score normalized to the highest value across development):
+```{r}
+LTHSC_LR_norm <- read_excel("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/LTHSC_ligand-receptor_matrix_normalized.xlsx", col_types = c("text", "numeric", "numeric", "numeric", "numeric"))
+View(LTHSC_LR_norm)
+rownames(LTHSC_LR_norm) <- LTHSC_LR_norm$Pair
+melt_LTHSC_LR_norm <- melt(LTHSC_LR_norm)
+head(melt_LTHSC_LR_norm)
+ggplot(melt_LTHSC_LR_norm, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "red")
+##This automatically places the factor "Pair" levels in descending alphabetical order. To change them to the desired order, you have to manually input the values
+melt_LTHSC_LR_norm$Pair <- factor(melt_LTHSC_LR_norm$Pair, levels = c('Kitl-Kit','Apoe-Sorl1','Igf2-Insr','Igf2-Igf1r','Mdk-Itgb2','Penk-Ogfr','Igf1-Insr','Igf1-Igf1r','App&Bace1-Tnfrsf21','Bmp2-Acvr2b','Mfap2-Notch1','Tgfb3-Tgfbr1','Tgfb2-Tgfbr1','Tgfb3-Tgfbr2'))
+ggplot(melt_LTHSC_LR_norm, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "red")
+
+MPP2_LR_norm1 <- read_excel("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/MPP2_ligand-receptor_matrix_normalized.xlsx", col_types = c("text", "numeric", "numeric", "numeric", "numeric"))
+View(MPP2_LR_norm1)
+rownames(MPP2_LR_norm1) <- MPP2_LR_norm1$Pair
+melt_MPP2_LR_norm1 <- melt(MPP2_LR_norm1)
+head(melt_MPP2_LR_norm1)
+ggplot(melt_MPP2_LR_norm1, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "red")
+##This automatically places the factor "Pair" levels in descending alphabetical order. To change them to the desired order, you have to manually input the values
+melt_MPP2_LR_norm1$Pair <- factor(melt_MPP2_LR_norm1$Pair, levels = c('Tgfb1-Cxcr4','Igf1-Igf1r','Kitl-Kit','Csf1-Csf1r','Igf2-Igf1r','Cyr61-Itga2b&Itgb3','Igf2-Insr','Penk-Ogfr','Mdk-Itgb2','App&Bace1-Tnfrsf21','Gpi1-Amfr','Nrtn-Gfra1','Igfbp4-Lrp6','Tgfb2-Tgfbr1','Tgfb3-Tgfbr1'))
+ggplot(melt_MPP2_LR_norm1, aes(variable, Pair)) +
+    geom_tile(aes(fill = value), colour = "white") +
+    scale_fill_gradient(low = "white", high = "red")
+
+
+
+
+```
+Create some plots:
+```{r}
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/AdultStromavLTHSC.Robj")
+DimPlot(AdultStromavLTHSC, group.by = 'direction', cols = c('red','gray'), pt.size = 1.5)
+Sig <- subset(AdultStromavLTHSC, direction %in% c('LTHSC'))
+DimPlot(Sig, group.by = 'Specificity_Significance', cols = c('black','red'), pt.size = 1.5)
+
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/E16StromavLTHSC.Robj")
+DimPlot(E16StromavLTHSC, group.by = 'direction', cols = c('red','gray'), pt.size = 1.5)
+Sig <- subset(E16StromavLTHSC, direction %in% c('LTHSC'))
+DimPlot(Sig, group.by = 'Specificity_Significance', cols = c('black','red'), pt.size = 1.5)
+
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/E18StromavLTHSC.Robj")
+DimPlot(E18StromavLTHSC, group.by = 'direction', cols = c('red','gray'), pt.size = 1.5)
+Sig <- subset(E18StromavLTHSC, direction %in% c('LTHSC'))
+DimPlot(Sig, group.by = 'Specificity_Significance', cols = c('black','red'), pt.size = 1.5)
+
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/P0StromavLTHSC.Robj")
+DimPlot(P0StromavLTHSC, group.by = 'direction', cols = c('red','gray'), pt.size = 1.5)
+Sig <- subset(P0StromavLTHSC, direction %in% c('LTHSC'))
+DimPlot(Sig, group.by = 'Specificity_Significance', cols = c('black','red'), pt.size = 1.5)
+
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/AdultStromavMPP2.Robj")
+DimPlot(AdultStromavMPP2, group.by = 'direction', cols = c('red','gray'), pt.size = 1.5)
+Sig <- subset(AdultStromavMPP2, direction %in% c('MPP2'))
+DimPlot(Sig, group.by = 'Specificity_Significance', cols = c('black','red'), pt.size = 1.5)
+
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/E16StromavMPP2.Robj")
+DimPlot(E16StromavMPP2, group.by = 'direction', cols = c('red','gray'), pt.size = 1.5)
+Sig <- subset(E16StromavMPP2, direction %in% c('MPP2'))
+DimPlot(Sig, group.by = 'Specificity_Significance', cols = c('black','red'), pt.size = 1.5)
+
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/E18StromavMPP2.Robj")
+DimPlot(E18StromavMPP2, group.by = 'direction', cols = c('red','gray'), pt.size = 1.5)
+Sig <- subset(E18StromavMPP2, direction %in% c('MPP2'))
+DimPlot(Sig, group.by = 'Specificity_Significance', cols = c('black','red'), pt.size = 1.5)
+
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Anchors/P0StromavMPP2.Robj")
+DimPlot(P0StromavMPP2, group.by = 'direction', cols = c('red','gray'), pt.size = 1.5)
+Sig <- subset(P0StromavMPP2, direction %in% c('MPP2'))
+DimPlot(Sig, group.by = 'Specificity_Significance', cols = c('black','red'), pt.size = 1.5)
+
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/RNAMagnet/20210318 Hyunjin New Analysis/Signaling/Adult/LTHSC/AdultStromavLTHSC_Sig_Specificity.Robj")
+DimPlot(AdultStromavLTHSC_Sig_Specificity, pt.size = 1.5)

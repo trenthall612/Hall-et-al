@@ -1,0 +1,425 @@
+---
+title: "SingleCellNet"
+author: "Trent"
+date: "4/20/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Single Cell Net must be used with an earlier version of R (Using version 3.6.3)
+
+First, load in the data and convert the R objects you wish to use for your training and query data to a format that SCN can use:
+```{r}
+memory.limit(size = 50000)
+library(singleCellNet)
+library(Seurat)
+
+###First load the Baccin data###
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Stroma/Baccin/NicheData10X.rda")
+#Add a row in the meta.data for the cell types:
+cell_type <- Idents(object = NicheData10x)
+names(cell_type) <- colnames(x = NicheData10x)
+NicheData10x <- AddMetaData(object = NicheData10x,metadata = cell_type,col.name = 'cell.type')
+#Add a row in the meta.data for each individual cell name:
+sample_name <- rownames(NicheData10x@meta.data)
+names(sample_name) <- colnames(x = NicheData10x)
+NicheData10x <- AddMetaData(object = NicheData10x,metadata = sample_name,col.name = 'sample.name')
+
+###Now load our Adult Dataset###
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Stroma/StromaAdult_regress2.Robj")
+
+#Add a row in the meta.data for each individual cell name:
+sample_name <- rownames(StromaADULT_regress2@meta.data)
+names(sample_name) <- colnames(x = StromaADULT_regress2)
+StromaADULT_regress2 <- AddMetaData(object = StromaADULT_regress2,metadata = sample_name,col.name = 'sample.name')
+#Add a row in the meta.data for the cell types:
+cell_type <- Idents(object = StromaADULT_regress2)
+names(cell_type) <- colnames(x = StromaADULT_regress2)
+StromaADULT_regress2 <- AddMetaData(object = StromaADULT_regress2,metadata = cell_type,col.name = 'cell.type')
+
+###Now load our P0 Dataset###
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Stroma/StromaP0_regress2")
+
+#Add a row in the meta.data for each individual cell name:
+sample_name <- rownames(StromaP0_regress2@meta.data)
+names(sample_name) <- colnames(x = StromaP0_regress2)
+StromaP0_regress2 <- AddMetaData(object = StromaP0_regress2,metadata = sample_name,col.name = 'sample.name')
+#Add a row in the meta.data for the cell types:
+cell_type <- Idents(object = StromaP0_regress2)
+names(cell_type) <- colnames(x = StromaP0_regress2)
+StromaP0_regress2 <- AddMetaData(object = StromaP0_regress2,metadata = cell_type,col.name = 'cell.type')
+
+###Now load our E18.5 Dataset###
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Stroma/StromaE18_regress2")
+
+#Add a row in the meta.data for each individual cell name:
+sample_name <- rownames(StromaE18_regress2@meta.data)
+names(sample_name) <- colnames(x = StromaE18_regress2)
+StromaE18_regress2 <- AddMetaData(object = StromaE18_regress2,metadata = sample_name,col.name = 'sample.name')
+#Add a row in the meta.data for the cell types:
+cell_type <- Idents(object = StromaE18_regress2)
+names(cell_type) <- colnames(x = StromaE18_regress2)
+StromaE18_regress2 <- AddMetaData(object = StromaE18_regress2,metadata = cell_type,col.name = 'cell.type')
+
+###Now load our E16.5 Dataset###
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Stroma/StromaE16_regress2")
+
+#Add a row in the meta.data for each individual cell name:
+sample_name <- rownames(StromaE16_regress2@meta.data)
+names(sample_name) <- colnames(x = StromaE16_regress2)
+StromaE16_regress2 <- AddMetaData(object = StromaE16_regress2,metadata = sample_name,col.name = 'sample.name')
+#Add a row in the meta.data for the cell types:
+cell_type <- Idents(object = StromaE16_regress2)
+names(cell_type) <- colnames(x = StromaE16_regress2)
+StromaE16_regress2 <- AddMetaData(object = StromaE16_regress2,metadata = cell_type,col.name = 'cell.type')
+
+###Object conversion###
+##Baccin(Training) Data##
+Baccin = extractSeurat(NicheData10x, exp_slot_name = "counts")
+stBaccin = Baccin$sampTab
+expBaccin = Baccin$expDat
+stBaccin <- droplevels(stBaccin)
+
+##Adult Stroma (Query) Data##
+SMF_Adult = extractSeurat(StromaADULT_regress2, exp_slot_name = "counts")
+stAdult = SMF_Adult$sampTab
+expAdult = SMF_Adult$expDat
+dim(expAdult)
+genesAdult = rownames(expAdult)
+rm(expAdult)
+gc()
+
+##P0 Stroma (Query) Data##
+SMF_P0 = extractSeurat(StromaP0_regress2, exp_slot_name = "counts")
+stP0 = SMF_P0$sampTab
+expP0 = SMF_P0$expDat
+dim(expP0)
+genesP0 = rownames(expP0)
+rm(expP0)
+gc()
+
+##E18.5 Stroma (Query) Data##
+SMF_E18 = extractSeurat(StromaE18_regress2, exp_slot_name = "counts")
+stE18 = SMF_E18$sampTab
+expE18 = SMF_E18$expDat
+dim(expE18)
+genesE18 = rownames(expE18)
+rm(expE18)
+gc()
+
+##E16.5 Stroma (Query) Data##
+SMF_E16 = extractSeurat(StromaE16_regress2, exp_slot_name = "counts")
+stE16 = SMF_E16$sampTab
+expE16 = SMF_E16$expDat
+dim(expE16)
+genesE16 = rownames(expE16)
+rm(expE16)
+gc()
+```
+Start with the adult dataset:
+
+```{r}
+##Find genes in common to the data sets and limit analysis to these##
+commonGenes = intersect(rownames(expBaccin), genesAdult)
+length(commonGenes)
+expBaccin = expBaccin[commonGenes,]
+
+##Split for training and assessment, and transform training data##
+
+set.seed(100)
+stList = splitCommon(sampTab=stBaccin, ncells=100, dLevel="cell.type")
+stTrain = stList[[1]]
+expTrain = expBaccin[,rownames(stTrain)]
+        
+##Train the classifier##
+system.time(class_info<-scn_train(stTrain = stTrain, expTrain = expTrain, nTopGenes = 10, nRand = 70, nTrees = 1000, nTopGenePairs = 25, dLevel = "cell.type", colName_samp = "sample.name"))
+
+##Assess the classifier with heldout data##
+###Apply to held out data###
+#Validate data#
+stTestList = splitCommon(sampTab=stList[[2]], ncells=100, dLevel="cell.type") #normalize validation data so that the assessment is as fair as possible
+stTest = stTestList[[1]]
+expTest = expBaccin[commonGenes,rownames(stTest)]
+#predict#
+classRes_val_all = scn_predict(cnProc=class_info[['cnProc']], expDat=expTest, nrand = 50)
+###Assess classifier###
+tm_heldoutassessment = assess_comm(ct_scores = classRes_val_all, stTrain = stTrain, stQuery = stTest, dLevelSID = "sample.name", classTrain = "cell.type", classQuery = "cell.type", nRand = 50)
+plot_PRs(tm_heldoutassessment)
+
+##Classification result heatmap##
+#Create a name vector label used later in classification heatmap where the values are cell types/ clusters and names are the sample names
+nrand = 50
+sla = as.vector(stTest$cell.type)
+names(sla) = as.vector(stTest$sample.name)
+slaRand = rep("rand", nrand) 
+names(slaRand) = paste("rand_", 1:nrand, sep='')
+sla = append(sla, slaRand) #include in the random cells profile created
+sc_hmClass(classMat = classRes_val_all,grps = sla, max=300, isBig=TRUE)
+###Attribution Plot###
+plot_attr(classRes=classRes_val_all, sampTab=stTest, nrand=nrand, dLevel="cell.type", sid="sample.name")
+###Visualize average top pairs genes expression for training data:
+gpTab = compareGenePairs(query_exp = expTest, training_exp = expTrain, training_st = stTrain, classCol = "cell.type", sampleCol = "sample.name", RF_classifier = class_info$cnProc$classifier, numPairs = 20, trainingOnly= TRUE)
+train = findAvgLabel(gpTab = gpTab, stTrain = stTrain, dLevel = "cell.type")
+
+###Query###
+#Apply to SMF Adult query data#
+expAdult = SMF_Adult$expDat
+nqRand = 50
+system.time(crAdultall<-scn_predict(class_info[['cnProc']], expAdult, nrand=nqRand))
+
+###Visualization###
+sgrp = as.vector(stAdult$seurat_clusters)
+names(sgrp) = as.vector(stAdult$sample.name)
+grpRand =rep("rand", nqRand)
+names(grpRand) = paste("rand_", 1:nqRand, sep='')
+sgrp = append(sgrp, grpRand)
+
+#heatmap classification result
+sc_hmClass(crAdultall, sgrp, max=5000, isBig=TRUE, cCol=F, font=8)
+
+###Classification annotation assignment###
+# This classifies a cell with  the catgory with the highest classification score or higher than a classification score threshold of your choosing.
+# The annotation result can be found in a column named category in the query sample table.
+
+stAdult <- get_cate(classRes = crAdultall, sampTab = stAdult, dLevel = "seurat_clusters", sid = "sample.name", nrand = nqRand)
+
+write.csv(stAdult, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Stroma/Baccin/AdultvBaccin_scnScore.csv")
+
+###Attribution Plot###
+plot_attr(classRes=crAdultall, sampTab=stAdult, nrand=nrand, dLevel="cell.type", sid="sample.name")
+
+###Classification result violin plot###
+sc_violinClass(sampTab = stAdult, classRes = crAdultall, sid = "sample.name", dLevel = "seurat_clusters", addRand = nqRand)
+```
+Repeat with the P0 Dataset:
+```{r}
+##Find genes in common to the data sets and limit analysis to these##
+commonGenes = intersect(rownames(expBaccin), genesP0)
+length(commonGenes)
+expBaccin = expBaccin[commonGenes,]
+
+##Split for training and assessment, and transform training data##
+
+set.seed(100)
+stList = splitCommon(sampTab=stBaccin, ncells=100, dLevel="cell.type")
+stTrain = stList[[1]]
+expTrain = expBaccin[,rownames(stTrain)]
+        
+##Train the classifier##
+system.time(class_info<-scn_train(stTrain = stTrain, expTrain = expTrain, nTopGenes = 10, nRand = 70, nTrees = 1000, nTopGenePairs = 25, dLevel = "cell.type", colName_samp = "sample.name"))
+
+##Assess the classifier with heldout data##
+###Apply to held out data###
+#Validate data#
+stTestList = splitCommon(sampTab=stList[[2]], ncells=100, dLevel="cell.type") #normalize validation data so that the assessment is as fair as possible
+stTest = stTestList[[1]]
+expTest = expBaccin[commonGenes,rownames(stTest)]
+#predict#
+classRes_val_all = scn_predict(cnProc=class_info[['cnProc']], expDat=expTest, nrand = 50)
+###Assess classifier###
+tm_heldoutassessment = assess_comm(ct_scores = classRes_val_all, stTrain = stTrain, stQuery = stTest, dLevelSID = "sample.name", classTrain = "cell.type", classQuery = "cell.type", nRand = 50)
+plot_PRs(tm_heldoutassessment)
+
+##Classification result heatmap##
+#Create a name vector label used later in classification heatmap where the values are cell types/ clusters and names are the sample names
+nrand = 50
+sla = as.vector(stTest$cell.type)
+names(sla) = as.vector(stTest$sample.name)
+slaRand = rep("rand", nrand) 
+names(slaRand) = paste("rand_", 1:nrand, sep='')
+sla = append(sla, slaRand) #include in the random cells profile created
+sc_hmClass(classMat = classRes_val_all,grps = sla, max=300, isBig=TRUE)
+###Attribution Plot###
+plot_attr(classRes=classRes_val_all, sampTab=stTest, nrand=nrand, dLevel="cell.type", sid="sample.name")
+###Visualize average top pairs genes expression for training data:
+gpTab = compareGenePairs(query_exp = expTest, training_exp = expTrain, training_st = stTrain, classCol = "cell.type", sampleCol = "sample.name", RF_classifier = class_info$cnProc$classifier, numPairs = 20, trainingOnly= TRUE)
+train = findAvgLabel(gpTab = gpTab, stTrain = stTrain, dLevel = "cell.type")
+
+###Query###
+#Apply to SMF P0 query data#
+expP0 = SMF_P0$expDat
+nqRand = 50
+system.time(crP0all<-scn_predict(class_info[['cnProc']], expP0, nrand=nqRand))
+
+###Visualization###
+sgrp = as.vector(stP0$seurat_clusters)
+names(sgrp) = as.vector(stP0$sample.name)
+grpRand =rep("rand", nqRand)
+names(grpRand) = paste("rand_", 1:nqRand, sep='')
+sgrp = append(sgrp, grpRand)
+
+#heatmap classification result
+sc_hmClass(crP0all, sgrp, max=5000, isBig=TRUE, cCol=F, font=8)
+
+###Classification annotation assignment###
+# This classifies a cell with  the catgory with the highest classification score or higher than a classification score threshold of your choosing.
+# The annotation result can be found in a column named category in the query sample table.
+
+stP0 <- get_cate(classRes = crP0all, sampTab = stP0, dLevel = "seurat_clusters", sid = "sample.name", nrand = nqRand)
+
+write.csv(stP0, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Stroma/Baccin/P0vBaccin_scnScore.csv")
+
+###Attribution Plot###
+plot_attr(classRes=crP0all, sampTab=stP0, nrand=nrand, dLevel="cell.type", sid="sample.name")
+
+###Classification result violin plot###
+sc_violinClass(sampTab = stP0, classRes = crP0all, sid = "sample.name", dLevel = "seurat_clusters", addRand = nqRand)
+
+```
+Repeat for E18.5:
+```{r}
+##Find genes in common to the data sets and limit analysis to these##
+commonGenes = intersect(rownames(expBaccin), genesE18)
+length(commonGenes)
+expBaccin = expBaccin[commonGenes,]
+
+##Split for training and assessment, and transform training data##
+
+set.seed(100)
+stList = splitCommon(sampTab=stBaccin, ncells=100, dLevel="cell.type")
+stTrain = stList[[1]]
+expTrain = expBaccin[,rownames(stTrain)]
+        
+##Train the classifier##
+system.time(class_info<-scn_train(stTrain = stTrain, expTrain = expTrain, nTopGenes = 10, nRand = 70, nTrees = 1000, nTopGenePairs = 25, dLevel = "cell.type", colName_samp = "sample.name"))
+
+##Assess the classifier with heldout data##
+###Apply to held out data###
+#Validate data#
+stTestList = splitCommon(sampTab=stList[[2]], ncells=100, dLevel="cell.type") #normalize validation data so that the assessment is as fair as possible
+stTest = stTestList[[1]]
+expTest = expBaccin[commonGenes,rownames(stTest)]
+#predict#
+classRes_val_all = scn_predict(cnProc=class_info[['cnProc']], expDat=expTest, nrand = 50)
+###Assess classifier###
+tm_heldoutassessment = assess_comm(ct_scores = classRes_val_all, stTrain = stTrain, stQuery = stTest, dLevelSID = "sample.name", classTrain = "cell.type", classQuery = "cell.type", nRand = 50)
+plot_PRs(tm_heldoutassessment)
+
+##Classification result heatmap##
+#Create a name vector label used later in classification heatmap where the values are cell types/ clusters and names are the sample names
+nrand = 50
+sla = as.vector(stTest$cell.type)
+names(sla) = as.vector(stTest$sample.name)
+slaRand = rep("rand", nrand) 
+names(slaRand) = paste("rand_", 1:nrand, sep='')
+sla = append(sla, slaRand) #include in the random cells profile created
+sc_hmClass(classMat = classRes_val_all,grps = sla, max=300, isBig=TRUE)
+###Attribution Plot###
+plot_attr(classRes=classRes_val_all, sampTab=stTest, nrand=nrand, dLevel="cell.type", sid="sample.name")
+###Visualize average top pairs genes expression for training data:
+gpTab = compareGenePairs(query_exp = expTest, training_exp = expTrain, training_st = stTrain, classCol = "cell.type", sampleCol = "sample.name", RF_classifier = class_info$cnProc$classifier, numPairs = 20, trainingOnly= TRUE)
+train = findAvgLabel(gpTab = gpTab, stTrain = stTrain, dLevel = "cell.type")
+
+###Query###
+#Apply to SMF E18 query data#
+expE18 = SMF_E18$expDat
+nqRand = 50
+system.time(crE18all<-scn_predict(class_info[['cnProc']], expE18, nrand=nqRand))
+
+###Visualization###
+sgrp = as.vector(stE18$seurat_clusters)
+names(sgrp) = as.vector(stE18$sample.name)
+grpRand =rep("rand", nqRand)
+names(grpRand) = paste("rand_", 1:nqRand, sep='')
+sgrp = append(sgrp, grpRand)
+
+#heatmap classification result
+sc_hmClass(crE18all, sgrp, max=5000, isBig=TRUE, cCol=F, font=8)
+
+###Classification annotation assignment###
+# This classifies a cell with  the catgory with the highest classification score or higher than a classification score threshold of your choosing.
+# The annotation result can be found in a column named category in the query sample table.
+
+stE18 <- get_cate(classRes = crE18all, sampTab = stE18, dLevel = "seurat_clusters", sid = "sample.name", nrand = nqRand)
+
+write.csv(stE18, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Stroma/Baccin/E18vBaccin_scnScore.csv")
+
+###Attribution Plot###
+plot_attr(classRes=crE18all, sampTab=stE18, nrand=nrand, dLevel="cell.type", sid="sample.name")
+
+
+###Classification result violin plot###
+sc_violinClass(sampTab = stE18, classRes = crE18all, sid = "sample.name", dLevel = "seurat_clusters", addRand = nqRand)
+
+```
+Repeat for E16.5:
+```{r}
+##Find genes in common to the data sets and limit analysis to these##
+commonGenes = intersect(rownames(expBaccin), genesE16)
+length(commonGenes)
+expBaccin = expBaccin[commonGenes,]
+
+##Split for training and assessment, and transform training data##
+
+set.seed(100)
+stList = splitCommon(sampTab=stBaccin, ncells=100, dLevel="cell.type")
+stTrain = stList[[1]]
+expTrain = expBaccin[,rownames(stTrain)]
+        
+##Train the classifier##
+system.time(class_info<-scn_train(stTrain = stTrain, expTrain = expTrain, nTopGenes = 10, nRand = 70, nTrees = 1000, nTopGenePairs = 25, dLevel = "cell.type", colName_samp = "sample.name"))
+
+##Assess the classifier with heldout data##
+###Apply to held out data###
+#Validate data#
+stTestList = splitCommon(sampTab=stList[[2]], ncells=100, dLevel="cell.type") #normalize validation data so that the assessment is as fair as possible
+stTest = stTestList[[1]]
+expTest = expBaccin[commonGenes,rownames(stTest)]
+#predict#
+classRes_val_all = scn_predict(cnProc=class_info[['cnProc']], expDat=expTest, nrand = 50)
+###Assess classifier###
+tm_heldoutassessment = assess_comm(ct_scores = classRes_val_all, stTrain = stTrain, stQuery = stTest, dLevelSID = "sample.name", classTrain = "cell.type", classQuery = "cell.type", nRand = 50)
+plot_PRs(tm_heldoutassessment)
+
+##Classification result heatmap##
+#Create a name vector label used later in classification heatmap where the values are cell types/ clusters and names are the sample names
+nrand = 50
+sla = as.vector(stTest$cell.type)
+names(sla) = as.vector(stTest$sample.name)
+slaRand = rep("rand", nrand) 
+names(slaRand) = paste("rand_", 1:nrand, sep='')
+sla = append(sla, slaRand) #include in the random cells profile created
+sc_hmClass(classMat = classRes_val_all,grps = sla, max=300, isBig=TRUE)
+###Attribution Plot###
+plot_attr(classRes=classRes_val_all, sampTab=stTest, nrand=nrand, dLevel="cell.type", sid="sample.name")
+###Visualize average top pairs genes expression for training data:
+gpTab = compareGenePairs(query_exp = expTest, training_exp = expTrain, training_st = stTrain, classCol = "cell.type", sampleCol = "sample.name", RF_classifier = class_info$cnProc$classifier, numPairs = 20, trainingOnly= TRUE)
+train = findAvgLabel(gpTab = gpTab, stTrain = stTrain, dLevel = "cell.type")
+
+###Query###
+#Apply to SMF E16 query data#
+expE16 = SMF_E16$expDat
+nqRand = 50
+system.time(crE16all<-scn_predict(class_info[['cnProc']], expE16, nrand=nqRand))
+
+###Visualization###
+sgrp = as.vector(stE16$seurat_clusters)
+names(sgrp) = as.vector(stE16$sample.name)
+grpRand =rep("rand", nqRand)
+names(grpRand) = paste("rand_", 1:nqRand, sep='')
+sgrp = append(sgrp, grpRand)
+
+#heatmap classification result
+sc_hmClass(crE16all, sgrp, max=5000, isBig=TRUE, cCol=F, font=8)
+
+###Classification annotation assignment###
+# This classifies a cell with  the catgory with the highest classification score or higher than a classification score threshold of your choosing.
+# The annotation result can be found in a column named category in the query sample table.
+
+stE16 <- get_cate(classRes = crE16all, sampTab = stE16, dLevel = "seurat_clusters", sid = "sample.name", nrand = nqRand)
+
+write.csv(stE16, file = "C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Stroma/Baccin/E16vBaccin_scnScore.csv")
+
+###Attribution Plot###
+plot_attr(classRes=crE16all, sampTab=stE16, nrand=nrand, dLevel="cell.type", sid="sample.name")
+
+###Classification result violin plot###
+sc_violinClass(sampTab = stE16, classRes = crE16all, sid = "sample.name", dLevel = "seurat_clusters", addRand = nqRand)
+
+```
+Now, move on to the Baryawno data (from Scadden Lab):
+```{r}
+
+```

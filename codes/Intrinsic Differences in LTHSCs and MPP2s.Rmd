@@ -1,0 +1,126 @@
+---
+title: "Intrinsic differences in LTHSCs and MPP2s"
+author: "Trent"
+date: "4/28/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Begin with the new objects that Jackie created:
+
+
+
+```{r}
+library(Seurat)
+LTHSC_FBM_allTimePoints_refined <- readRDS("Z:/ResearchHome/ProjectSpace/thomagrp/JCC282_Hematopoiesis/common/jam_Analysis/LTHSC_Characterization/Developmental_TP_Evaluation/LTHSC_FBM_allTimePoints_refined.rds")
+DimPlot(LTHSC_FBM_allTimePoints_refined, group.by = "timePoint_ident", cols = c("cyan",'magenta','purple','red'), pt.size = 3)
+DimPlot(LTHSC_FBM_allTimePoints_refined, pt.size = 3)
+
+FBM_MPP2_allTimePoints_20210405 <- readRDS("Z:/ResearchHome/ProjectSpace/thomagrp/JCC282_Hematopoiesis/common/jam_Analysis/MPP2/FBM_MPP2_allTimePoints_20210405.rds")
+DimPlot(FBM_MPP2_allTimePoints_20210405, group.by = "timePoint_ident", cols = c("cyan",'magenta','purple','red'), pt.size = 3)
+DimPlot(FBM_MPP2_allTimePoints_20210405, pt.size = 3)
+```
+What's composition of each cluster in terms of timepoint?
+```{r}
+LTHSC_refined_meta <- LTHSC_FBM_allTimePoints_refined@meta.data
+write.csv(LTHSC_refined_meta, file = 'C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/LTHSC_refined_meta.csv')
+
+MPP2_refined_meta <- FBM_MPP2_allTimePoints_20210405@meta.data
+write.csv(MPP2_refined_meta, file = 'C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/MPP2_refined_meta.csv')
+```
+How does HSC score look across development?
+```{r}
+FeaturePlot(LTHSC_FBM_allTimePoints_refined, features = c("hscScore"), cols = c('gray','deeppink4','red','orange'), pt.size = 3)
+FeaturePlot(FBM_MPP2_allTimePoints_20210405, features = c("hscScore"), cols = c('gray','deeppink4','red','orange'), pt.size = 3)
+```
+Performing a comparison of cluster 0 vs 2 in LTHSC object:
+```{r}
+markers.c0_vs_c2<- FindMarkers(LTHSC_FBM_allTimePoints_refined, ident.1 = c("0"), ident.2 = "2", min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(markers.c0_vs_c2,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/LTHSC_c0_vs_LTHSC_c2.csv")
+###Quick look shows that there are no upregulated genes in cluster 0 compared to cluster 2###
+
+markers.c2_vs_c0<- FindMarkers(LTHSC_FBM_allTimePoints_refined, ident.1 = c("2"), ident.2 = "0", min.pct = 0.25, logfc.threshold = 0.25)
+```
+
+
+```{r}
+write.csv(markers.c2_vs_c0,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/LTHSC_c2_vs_LTHSC_c0.csv")
+###Only a few genes significantly enriched in cluster 2###
+```
+What about cluster 3 vs clusters 2 and 0?:
+```{r}
+markers.c0_vs_c3<- FindMarkers(LTHSC_FBM_allTimePoints_refined, ident.1 = c("0"), ident.2 = "3", min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(markers.c0_vs_c3,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/LTHSC_c0_vs_LTHSC_c3.csv")
+###No significantly enriched genes expressed in C0###
+
+markers.c2_vs_c3<- FindMarkers(LTHSC_FBM_allTimePoints_refined, ident.1 = c("2"), ident.2 = "3", min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(markers.c2_vs_c3,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/LTHSC_c2_vs_LTHSC_c3.csv")
+###No significantly enriched genes expressed in C2###
+
+markers.c3_vs_c0<- FindMarkers(LTHSC_FBM_allTimePoints_refined, ident.1 = c("3"), ident.2 = "0", min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(markers.c3_vs_c0,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/LTHSC_c3_vs_LTHSC_c0.csv")
+
+markers.c3_vs_c2<- FindMarkers(LTHSC_FBM_allTimePoints_refined, ident.1 = c("3"), ident.2 = "2", min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(markers.c3_vs_c2,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/LTHSC_c3_vs_LTHSC_c2.csv")
+
+```
+Compare clusters in MPP2 object:
+```{r}
+markers.c0_vs_c3<- FindMarkers(FBM_MPP2_allTimePoints_20210405, ident.1 = c("0"), ident.2 = "3", min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(markers.c0_vs_c3,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/MPP2_c0_vs_MPP2_c3.csv")
+
+markers.c0_vs_c2<- FindMarkers(FBM_MPP2_allTimePoints_20210405, ident.1 = c("0"), ident.2 = "2", min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(markers.c0_vs_c2,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/MPP2_c0_vs_MPP2_c2.csv")
+
+markers.c2_vs_c3<- FindMarkers(FBM_MPP2_allTimePoints_20210405, ident.1 = c("2"), ident.2 = "3", min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(markers.c2_vs_c3,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/MPP2_c2_vs_MPP2_c3.csv")
+
+markers.c3_vs_c0<- FindMarkers(FBM_MPP2_allTimePoints_20210405, ident.1 = c("3"), ident.2 = "0", min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(markers.c3_vs_c0,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/MPP2_c3_vs_MPP2_c0.csv")
+
+markers.c2_vs_c0<- FindMarkers(FBM_MPP2_allTimePoints_20210405, ident.1 = c("2"), ident.2 = "0", min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(markers.c2_vs_c0,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/MPP2_c2_vs_MPP2_c0.csv")
+
+markers.c3_vs_c2<- FindMarkers(FBM_MPP2_allTimePoints_20210405, ident.1 = c("3"), ident.2 = "2", min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(markers.c3_vs_c2,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/MPP2_c3_vs_MPP2_c2.csv")
+
+```
+Move to Magee data:
+```{r}
+E165FL_E165FL_GSM4645158_v2 <- readRDS("Z:/ResearchHome/ProjectSpace/thomagrp/JCC282_Hematopoiesis/common/jam_Analysis/Magee_Integration/Heme/Updated_LinKit_E16_FBM_vs_FL/E165FL_E165FL_GSM4645158_v2.rds")
+DimPlot(E165FL_E165FL_GSM4645158_v2)
+
+E165FL_E165FL_GSM4645158_v2 <- RenameIdents(E165FL_E165FL_GSM4645158_v2, 'BCell'='BCell','Bcell_FL'='BCell','cycling_FL'='HSPC','HSPC-1_FL'='HSPC','HSPC_FL'='HSPC','Prog'='HSPC','DC'='Myeloid','Mono/Mast'='Myeloid','Myeloid_FL'='Myeloid','Neu'='Myeloid','EosP/BasP'='Eos/Bas','Mast_FL'='Eos/Bas','Ery-2_FL'='Ery/Meg','Ery_FL'='Ery/Meg','MEP_FL'='Ery/Meg','UD1'='Ery/Meg','Mast1'='Mast','Mast2'='Mast','Mast3'='Mast','UD2'='Mast','TCell1'='TCell','TCell2'='TCell','TCell3'='TCell','TCell4'='TCell','TCell5'='TCell','TCell6'='TCell')
+
+DimPlot(E165FL_E165FL_GSM4645158_v2, cols = c('red','goldenrod','green','black','cyan','purple','magenta'), pt.size = 1.5)
+DimPlot(E165FL_E165FL_GSM4645158_v2, split.by = 'orig.ident', cols = c('red','goldenrod','green','black','cyan','purple','magenta'), pt.size = 1.5)
+
+load("C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/HemeP0/Magee/integrated.robj")
+DimPlot(integrated)
+
+integrated <- RenameIdents(integrated, "6" = 'BCell','Bcell1'='BCell','BCell2'='BCell','1'='HSPC','4'='HSPC','HSPC2'='HSPC','HSPC3'='HSPC','HSPC4'='HSPC','LymP'='HSPC','2'='Myeloid','11'='Myeloid','DC3'='Myeloid','Mono1'='Myeloid','Mono2'='Myeloid','MyP2'='Myeloid','MyP3'='Myeloid','Neu2'='Myeloid','8'='Eos/Bas','Bas2'='Eos/Bas','Eos/Bas3'='Eos/Bas','EosP'='Eos/Bas','0'='Ery/Meg','3'='Ery/Meg','7'='Ery/Meg','10'='Ery/Meg','9'='Ery/Meg','EryP1'='Ery/Meg','MegP1'='Ery/Meg','5'='Mast','12'='Mast','Mast3'='Mast','Mast4'='Mast','TCell5'='TCell')
+
+DimPlot(integrated, pt.size = 1.5, group.by = orig.ident, cols = c('red','black'))
+DimPlot(integrated, pt.size = 1.5, cols = c('magenta','red','goldenrod','green','black','cyan','purple'))
+DimPlot(integrated, pt.size = 1.5, split.by = 'orig.ident', cols = c('magenta','red','goldenrod','green','black','cyan','purple'))
+```
+Look at the markers specific to the FBM Mast cell and FL erythroid cell populations, then use genes to determine GO terms?
+```{r}
+E16_FBM_FL_markers <- FindAllMarkers(E165FL_E165FL_GSM4645158_v2, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(E16_FBM_FL_markers,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/Magee/Kit+Lin-/E16_FBM_FL_markers.csv")
+```
+A way to combine clusters vs everything? Will this change the result?
+```{r}
+E165FBM_TCell_markers <- FindMarkers(E165FL_E165FL_GSM4645158_v2, ident.1 = c("TCell1",'TCell2','TCell3','TCell4','TCell5','TCell6'), only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(E165FBM_TCell_markers,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/Magee/Kit+Lin-/E16FBM_TCell_markers.csv")
+###Yes, this works!###
+
+E165FBM_Mast_markers <- FindMarkers(E165FL_E165FL_GSM4645158_v2, ident.1 = c("Mast1",'Mast2','Mast3'), only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(E165FBM_Mast_markers,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/Magee/Kit+Lin-/E16FBM_Mast_markers.csv")
+
+E165FL_Ery_markers <- FindMarkers(E165FL_E165FL_GSM4645158_v2, ident.1 = c("Ery-2_FL",'Ery_FL'), only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(E165FL_Ery_markers,file="C:/Users/thall/Desktop/Loaner Desktop/Hall et al. CSC/singlecell2/Intrinsic/Magee/Kit+Lin-/E165FL_Ery_markers.csv")
+
+```
